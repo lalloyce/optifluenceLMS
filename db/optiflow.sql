@@ -13,7 +13,9 @@ CREATE TABLE optiflow.users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     login_attempts INT DEFAULT 0,
     reset_token VARCHAR(255) DEFAULT NULL,
-    reset_requested_at datetime DEFAULT NULL
+    reset_requested_at datetime DEFAULT NULL,
+    last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users (username, password, email) VALUES ('admin', '$2y$10$PF6lpgZN3kEGxlfmW9mq7.deevdXw.JXCJeZToEhZ/fwTVBsuud6m', 'lalloyce@gmail.com');
+INSERT INTO users (username, password, email) VALUES ('admin', 'D#FR$GG#D', 'lalloyce@gmail.com');
+

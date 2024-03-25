@@ -5,7 +5,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require 'db/db_connection.php';
+require_once __DIR__ . '/db/db_connection.php';
 $error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -45,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->execute();
 
             // Check if login attempts exceed limit
-            if ($user['login_attempts'] + 1 > 3) {
+            if ($user['login_attempts'] + 1 > 5) {
                 die("Too many failed login attempts. Please try again later.");
             } else {
                 $error = 'Invalid password.';
