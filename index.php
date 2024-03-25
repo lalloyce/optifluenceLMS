@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require 'db/db_connection.php';
 $error = '';
 
@@ -11,7 +15,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn = new mysqli($servername, $username, $password, $dbname);
 
     if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+        error_log("Connection failed: " . $conn->connect_error);
+        die("Connection failed. Please try again later.");
     }
 
     $sql = "SELECT * FROM users WHERE username = ?";
@@ -31,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             $_SESSION['username'] = $user['username'];
             header("Location: dashboard.php");
-            exit;
+            exit();
         } else {
             // Increment login attempts
             $sql = "UPDATE users SET login_attempts = login_attempts + 1 WHERE username = ?";
@@ -59,7 +64,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html>
 <head>
     <title>Login | Register </title>
+    <link rel="stylesheet" href="styles.css">
+
+    <div class="header">
+        <img src="images/logo.png" alt="Logo">
+    </div>
 </head>
+
 <body>
     <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
         <label for="username">Username:</label>
@@ -69,6 +80,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <input type="submit" value="Login">
         <?php echo $error; ?>
     </form>
-    <button onclick="window.location.href='reset_password.php'">Reset Password</button>
+    <a href="password_reset.php" class="button">Reset Password</a>
+
+    <footer>
+        <p>&copy; <?php echo date("Y"); ?> Optifluence Limited</p>
+    </footer>
+
 </body>
 </html>
