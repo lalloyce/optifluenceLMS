@@ -1,14 +1,14 @@
 <?php
-$servername = "localhost";
-$username = "root";
-$password = 'D#FR$GG#D';
-$dbname = "optiflow";
+    $servername = "localhost"; // replace with your server name
+    $username = "root"; // replace with your username
+    $password = 'D#FR$GG#D'; // replace with your password
+    $dbname = "optiflow"; // replace with your database name
 
-// Create connection
-$link = new mysqli($servername, $username, $password, $dbname);
+    // Create connection
+    $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Check connection
-if ($link->connect_error) {
-    die("Connection failed: " . $link->connect_error);
-}
+    // Check connection
+    if ($conn->connect_error) {
+        die("Connection failed: " . $conn->connect_error);
+    }
 ?>
