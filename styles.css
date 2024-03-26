@@ -4,24 +4,31 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* This makes the body take up the full viewport height */
-    justify-content: center;
-    align-items: center;
-    height: 100vh; /* This makes the body take up the full viewport height */
-    margin: 0; /* This removes the default margin */
-    padding: 0; /* This removes the default padding */
+    height: 100vh;
+    margin: 0;
+    padding: 0;
 }
 
 .centered-form {
-    width: 50%; /* Adjust this value to change the size of the form */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.centered-form input[type="text"]:focus,
+.centered-form input[type="number"]:focus,
+.centered-form input[type="date"]:focus {
+    background-color: #e8f0fe;
 }
 
 form {
     background-color: #fff;
     padding: 20px;
     border-radius: 5px;
-    box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
-    box-sizing: border-box; /* Add this line to include padding and border in the element's total width and height */
+    box-shadow: 0 0 10px 0 rgba(0,0,0,0.1);
+    box-sizing: border-box;
     width: 300px;
 }
 
@@ -36,7 +43,7 @@ form input[type="text"], form input[type="password"] {
     margin-bottom: 20px;
     border-radius: 5px;
     border: 1px solid #ddd;
-    box-sizing: border-box; /* Add this line to include padding and border in the element's total width and height */
+    box-sizing: border-box;
 }
 
 form input[type="submit"] {
@@ -114,7 +121,7 @@ nav ul {
 
 nav {
     background-color: #2c3e50;
-    padding: 0px;
+    padding: 0;
     text-align: center;
 }
 
@@ -141,17 +148,8 @@ nav ul li a {
 }
 
 nav li a:hover {
-    color: #3498db; /* Change the hover color */
-    text-decoration: underline; /* Add an underline on hover */
-}
-
-nav li .dropdown-menu {
-    display: none;
-    position: absolute;
-    background-color: #2c3e50;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
+    color: #3498db;
+    text-decoration: underline;
 }
 
 nav li .dropdown-menu a {
@@ -159,26 +157,4 @@ nav li .dropdown-menu a {
     padding: 12px 16px;
     text-decoration: none;
     display: block;
-}
-
-nav li:hover .dropdown-menu {
-    display: block;
-}
-
-.error-message {
-    color: red;
-}
-
-.success-message {
-    color: green;
-    font-weight: bold;
-}
-
-.centered-form {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    width: 50%; /* Adjust this value to change the size of the form */
-    margin: 0 auto; /* This will center the form on the page */
 }
