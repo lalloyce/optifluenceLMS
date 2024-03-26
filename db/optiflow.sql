@@ -51,6 +51,9 @@ CREATE TABLE loans (
     FOREIGN KEY (borrower_id) REFERENCES borrowers(id)
 );
 
+INSERT INTO loans (loan_amount, interest_rate, loan_period, borrower_id, loan_type, loan_purpose, loan_status, loan_date, loan_due_date, loan_repayment_date, loan_repayment_amount, loan_penalty_amount, loan_balance)
+VALUES (1000, 5, 12, 1, 'Personal', 'Test', 'Active', CURDATE() - INTERVAL 31 DAY, CURDATE() + INTERVAL 1 YEAR, NULL, 0, 0, 1000);
+
 CREATE TABLE repayments (
     repayment_id INT AUTO_INCREMENT PRIMARY KEY,
     loan_id INT NOT NULL,
@@ -61,3 +64,17 @@ CREATE TABLE repayments (
     FOREIGN KEY (loan_id) REFERENCES loans(loan_id),
     FOREIGN KEY (borrower_id) REFERENCES borrowers(id)
 );
+
+DELIMITER //
+    CREATE EVENT levy_penalty
+    ON SCHEDULE EVERY 1 DAY
+    STARTS CONCAT(CURDATE() + INTERVAL 1 DAY, ' 00:01:00')
+    DO
+      BEGIN
+        UPDATE loans
+        SET loan_penalty_amount = loan_balance * 0.1,
+            loan_balance = loan_balance + (loan_balance * 0.1)
+        WHERE DATEDIFF(CURRENT_DATE, loan_date) > 30
+        AND loan_balance > 0;
+      END //
+DELIMITER ;
