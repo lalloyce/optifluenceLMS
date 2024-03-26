@@ -1,13 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
-    <!-- ... -->
+    <!-- Add CSS -->
+    <head>
+        <link rel="stylesheet" href="styles.css">
+        <title>Create New Loan</title>
+    </head>
     <body>
-        <!-- ... -->
+        <script>
+            // Check if the success message is set
+            if (localStorage.getItem('success_message')) {
+                // Create a new div element
+                var successMessageDiv = document.createElement('div');
+
+                // Set the div's class and text content
+                successMessageDiv.className = 'success-message';
+                successMessageDiv.textContent = localStorage.getItem('success_message');
+
+                // Append the div to the body
+                document.body.appendChild(successMessageDiv);
+
+                // Remove the success message from local storage
+                localStorage.removeItem('success_message');
+            }
+        </script>
 
         <!-- New Loan Form -->
-        <form id="newLoanForm" action="create_loan.php" method="post" class="centered-form">
-            <label for="borrower_id">Borrower ID:</label>
-            <input type="text" id="borrower_id" name="borrower_id" onkeyup="fetchBorrowerDetails(this.value)" required>
+        <form id="newLoanForm" action="scripts/create_loan.php" method="post" class="centered-form">
+            <label for="nationalId">National ID:</label>
+            <input type="number" id="nationalId" name="nationalId" onkeyup="fetchBorrowerDetails(this.value)" required>
+
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName" readonly>
+
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName" readonly>
+
+            <!-- convert this to drop down: Personal, Business -->
+            <label for="loan_type">Loan Type:</label>
+            <input type="text" id="loan_type" name="loan_type" required>
 
             <label for="loan_amount">Loan Amount:</label>
             <input type="number" id="loan_amount" name="loan_amount" required>
@@ -15,20 +45,21 @@
             <label for="loan_date">Loan Date:</label>
             <input type="date" id="loan_date" name="loan_date" onchange="calculateDueDate(this.value)" required>
 
-            <label for="loan_due_date">Loan Due Date:</label>
-            <input type="date" id="loan_due_date" name="loan_due_date" readonly>
+            <label for="due_date">Loan Due Date:</label>
+            <input type="date" id="due_date" name="due_date" readonly>
 
             <input type="submit" value="Create New Loan">
         </form>
 
+        <div id="error-message" style="color: red;"></div>
+
         <script>
             // Function to calculate the loan due date
             function calculateDueDate(loan_date) {
-                var loanDateObj = new Date(loan_date);
-                loanDateObj.setDate(loanDateObj.getDate() + 30); // Add 30 days to loan date
+            var loanDateObj = new Date(loan_date);
+            loanDateObj.setDate(loanDateObj.getDate() + 30); // Add 30 days to loan date
 
-                var loanDueDate = loanDateObj.toISOString().split('T')[0]; // Format the date as 'yyyy-mm-dd'
-                document.getElementById('loan_due_date').value = loanDueDate;
+            document.getElementById('due_date').value = loanDateObj.toISOString().split('T')[0]; // Format the date as 'yyyy-mm-dd'
             }
 
             // Function to fetch borrower details
@@ -38,10 +69,13 @@
                         .then(response => response.json())
                         .then(data => {
                             // Populate form fields with borrower details
-                            document.getElementById('borrower_id').value = data.id;
+                            document.getElementById('nationalId').value = data.nationalId;
+                            document.getElementById('firstName').value = data.firstName;
+                            document.getElementById('lastName').value = data.lastName;
                         });
                 }
             }
         </script>
+
     </body>
 </html>
