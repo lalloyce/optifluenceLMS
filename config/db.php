@@ -1,4 +1,7 @@
 <?php
+
+//db.php
+
     $servername = "localhost"; // replace with your server name
     $username = "root"; // replace with your username
     $password = 'D#FR$GG#D'; // replace with your password

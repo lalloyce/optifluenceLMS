@@ -1,7 +1,7 @@
 <?php
 
     // Include the database connection file
-    require_once __DIR__ . '/db/db_connection.php';
+    require_once __DIR__ . '/config/db.php';
 
     // Query the database
     $result = $conn->query("SELECT * FROM your_table");
