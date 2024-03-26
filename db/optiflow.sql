@@ -30,7 +30,8 @@ CREATE TABLE borrowers (
     county VARCHAR(255) NOT NULL,
     mobileNumber VARCHAR(10) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    dob DATE NOT NULL
+    dob DATE NOT NULL,
+    age int default 0
     );
 
 CREATE TABLE loans (
@@ -48,7 +49,7 @@ CREATE TABLE loans (
     loan_repayment_amount INT NOT NULL,
     loan_penalty_amount DECIMAL(10,2) DEFAULT 0.00,
     loan_balance INT NOT NULL,
-    FOREIGN KEY (borrower_id) REFERENCES borrowers(id)
+    FOREIGN KEY (borrower_id) REFERENCES borrowers(nationalId)
 );
 
 INSERT INTO loans (loan_amount, interest_rate, loan_period, borrower_id, loan_type, loan_purpose, loan_status, loan_date, loan_due_date, loan_repayment_date, loan_repayment_amount, loan_penalty_amount, loan_balance)
@@ -77,4 +78,28 @@ DELIMITER //
         WHERE DATEDIFF(CURRENT_DATE, loan_date) > 30
         AND loan_balance > 0;
       END //
+DELIMITER ;
+
+alter table borrowers
+    add column age int default 0,
+    add column created_at timestamp default current_timestamp,
+    ADD UNIQUE (nationalId);
+
+DELIMITER //
+CREATE TRIGGER calculate_age_before_insert
+BEFORE INSERT ON borrowers
+FOR EACH ROW
+BEGIN
+    SET NEW.age = TIMESTAMPDIFF(YEAR, NEW.dob, CURDATE());
+END;//
+DELIMITER ;
+
+DELIMITER //
+CREATE EVENT update_ages
+ON SCHEDULE EVERY 1 YEAR
+STARTS CURDATE() + INTERVAL 1 DAY
+DO
+BEGIN
+    UPDATE borrowers SET age = TIMESTAMPDIFF(YEAR, dob, CURDATE());
+END;//
 DELIMITER ;

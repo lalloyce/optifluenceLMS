@@ -3,7 +3,7 @@
     session_start();
 
     // Include the database connection file
-   require_once __DIR__ . '/db/db_connection.php';
+    require_once __DIR__ . '/db/db_connection.php';
 
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -41,6 +41,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         die('Connection failed: ' . $conn->connect_error);
     }
 
+    // Check if borrower already exists
+    $checkSql = "SELECT * FROM borrowers WHERE nationalId = ?";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bind_param("s", $nationalId);
+    $checkStmt->execute();
+    $checkResult = $checkStmt->get_result();
+
+    if ($checkResult->num_rows > 0) {
+        $_SESSION['message'] = 'Borrower with this National ID already exists.';
+        header('Location: dashboard.php');
+        exit();
+    }
+
+    $checkStmt->close();
+
     $sql = "INSERT INTO borrowers (firstName, lastName, dob, nationalId, location, occupation, city, county, mobileNumber, email)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -49,10 +64,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($stmt->execute()) {
         $_SESSION['message'] = 'Borrower added successfully.';
-        header('Location: index.php');
+        header('Location: dashboard.php');
     } else {
         $_SESSION['message'] = 'Failed to add borrower.';
-        header('Location: index.php');
+        header('Location: dashboard.php');
     }
 
     $stmt->close();
