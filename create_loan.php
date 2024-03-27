@@ -6,23 +6,26 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // Include the database connection file
-require_once __DIR__ . '/db/db_connection.php';
+require_once __DIR__ . '/../config/db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check if borrower_id is set in the $_POST array
     if (!isset($_POST['nationalId'])) {
-        die('National ID is not set.');
+        throw new Exception('National ID is not set.');
     }
 
     $borrower_id = $_POST['nationalId'];
-    $loan_amount = $_POST['loan_amount'];
+    $loan_amount = filter_input(INPUT_POST, 'loan_amount', FILTER_VALIDATE_FLOAT);
+    if ($loan_amount === false) {
+        throw new Exception('Invalid loan amount.');
+    }
     $loan_date = $_POST['loan_date'];
     $due_date = $_POST['due_date'];
     $loan_type = $_POST['loan_type'];
 
     // Server-side validation
     if ($loan_amount < 5000) {
-        die('Loan amount cannot be less than 5,000.');
+        throw new Exception('Loan amount cannot be less than 5,000.');
     }
 
     // Calculate loan details
@@ -44,13 +47,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['success_message'] = 'Loan created successfully.';
 
         // Redirect the user back to the create_loan.html page
-        header('Location: dashboard.php');
+        header('Location: dashboard.html');
     } else {
-        echo 'Failed to create loan.';
+        throw new Exception('Failed to create loan.');
     }
 
     if ($stmt->error) {
-        die("Execute failed: " . $stmt->error);
+        throw new Exception("Execute failed: " . $stmt->error);
     }
 
     $stmt->close();

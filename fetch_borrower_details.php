@@ -2,9 +2,12 @@
 // fetch_borrower_details.php
 
 // Include the database connection file
-require_once __DIR__ . '/db/db_connection.php';
+require_once __DIR__ . '/../config/db.php'
 
-$input = $_GET['input'];
+$input = filter_input(INPUT_GET, 'input', FILTER_VALIDATE_INT);
+if ($input === false) {
+    throw new Exception('Invalid input.');
+}
 
     // Fetch borrower details
     $sql = "SELECT nationalId, firstName, lastName FROM borrowers WHERE nationalId = ?";
@@ -16,7 +19,7 @@ $input = $_GET['input'];
     if ($result->num_rows > 0) {
         $borrower = $result->fetch_assoc();
 
-        // Return borrower details as JSON
+    // Return borrower details as JSON
         echo json_encode($borrower);
     } else {
         echo json_encode([]);

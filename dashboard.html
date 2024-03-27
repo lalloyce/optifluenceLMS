@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Dashboard</title>
     <!-- Include any necessary CSS and JavaScript libraries for charting -->
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <!-- Include Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <!-- For example, you might use Chart.js for charting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 </head>
@@ -13,9 +16,9 @@
 <nav>
     <ul>
         <li><a href="#">Home</a></li>
-        <li><a href="#">Create New User</a></li>
-        <li><a href="#">Create New Loan</a></li>
-        <li><a href="#">Logout</a></li>
+        <li><a href="create_member.html">Create New User</a></li>
+        <li><a href="create_loan.html"">Create New Loan</a></li>
+        <li><a href="logout.php">Logout</a></li>
     </ul>
 </nav>
 
@@ -27,7 +30,7 @@
     <!-- Charts for loans issued over different time periods -->
     <div class="chart-container">
         <h3>Loans Issued</h3>
-        <canvas id="loans-chart" width="400" height="200"></canvas>
+        <canvas id="loansChart" width="400" height="200"></canvas>
         <button onclick="downloadChart('loans-chart')">Download Chart</button>
     </div>
 
@@ -57,28 +60,32 @@
     // JavaScript code for charting and downloading charts goes here
     // You need to write JavaScript functions to fetch data from the server
     // and create charts using Chart.js library
-    // Example:
-    // var ctx = document.getElementById('loans-chart').getContext('2d');
-    // var myChart = new Chart(ctx, {
-    //     type: 'bar',
-    //     data: {
-    //         labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-    //         datasets: [{
-    //             label: 'Loans Issued',
-    //             data: [65, 59, 80, 81, 56, 55, 40],
-    //             backgroundColor: 'rgba(255, 99, 132, 0.2)',
-    //             borderColor: 'rgba(255, 99, 132, 1)',
-    //             borderWidth: 1
-    //         }]
-    //     },
-    //     options: {
-    //         scales: {
-    //             y: {
-    //                 beginAtZero: true
-    //             }
-    //         }
-    //     }
-    // });
+    // JavaScript
+fetch('scripts/fetch_data.php')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('loansChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(item => item.loan_date),
+                datasets: [{
+                    label: 'Loans Issued',
+                    data: data.map(item => item.loan_amount),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
 
     // Function to download the chart as an image
     function downloadChart(canvasId) {
@@ -90,5 +97,37 @@
         link.click();
     }
 </script>
+
+<table id="loansTable">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Balance</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Rows will be added here dynamically -->
+    </tbody>
+</table>
+
+    <script>
+        // JavaScript code to fetch loans data and populate the table
+    fetch('scripts/fetch_loans.php')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('loansTable').getElementsByTagName('tbody')[0];
+            data.forEach(loan => {
+                const newRow = tableBody.insertRow();
+                newRow.innerHTML = `
+                    <td>${loan.date}</td>
+                    <td>${loan.amount}</td>
+                    <td>${loan.balance}</td>
+                    <td>${loan.status}</td>
+                `;
+            });
+        });
+    </script>
 </body>
 </html>
