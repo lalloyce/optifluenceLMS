@@ -17,8 +17,9 @@
             <img src="images/logo.png" alt="Logo"> <!-- Add this line -->
             <ul>
                 <li><a href="#">Home</a></li>
-                <li><a href="create_member.html">Create New User</a></li>
+                <li><a href="create_member.html">Create New Client</a></li>
                 <li><a href="create_loan.html">Create New Loan</a></li>
+                <li><a href="#">Loan Repayment</a></li>
                 <li><a href="logout.php">Logout</a></li>
             </ul>
         </nav>
@@ -91,7 +92,7 @@
                         {
                             label: 'Total Repayments',
                             data: data[0].map(item => item.total_repayments),
-                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderColor: getRandomColor(),
                             fill: false
                         }
                     ]
