@@ -1,0 +1,89 @@
+/* Add a logo to the extreme left of the navbar */
+nav {
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background-color: #e0e2e6; /* Change this to your preferred color */
+}
+
+nav img {
+    height: 50px; /* Adjust as needed */
+    margin-right: auto;
+}
+
+/* Make the navbar sticky */
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #333; /* Change this to your preferred color */
+}
+
+nav ul li {
+    float: left;
+}
+
+nav ul li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+/* Make the page mobile-friendly */
+@media screen and (max-width: 600px) {
+    nav ul li {
+        float: none;
+    }
+}
+
+/* Align the charts on the page, 3 each per row */
+#charts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.chart-container {
+    flex: 0 0 calc(33.33% - 10px); /* 20px for spacing, adjust as needed */
+    margin-bottom: 10px; /* Adjust as needed */
+}
+
+@media screen and (max-width: 600px) {
+    .chart-container {
+        flex: 0 0 100%;
+    }
+}
+
+/* Common styles for all charts */
+.chart-container canvas {
+    background-color: #f5f5f5; /* Light gray background */
+    border: 1px solid #ddd; /* Gray border */
+    border-radius: 4px; /* Rounded corners */
+}
+
+/* Common styles for chart titles */
+.chart-container h3 {
+    font-size: 1.2em; /* Larger font size */
+    color: #333; /* Dark gray color */
+    text-align: center; /* Centered text */
+}
+
+/* Common styles for download buttons */
+.chart-container button {
+    display: block; /* Block-level element */
+    margin: 10px auto; /* Centered horizontally with 10px vertical margin */
+    padding: 5px 10px; /* 5px vertical padding and 10px horizontal padding */
+    background-color: #007BFF; /* Blue background */
+    color: #fff; /* White text */
+    border: none; /* No border */
+    border-radius: 4px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+}
+
+.chart-container button:hover {
+    background-color: #0056b3; /* Darker blue background on hover */
+}
