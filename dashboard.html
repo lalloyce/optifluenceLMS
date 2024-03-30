@@ -3,18 +3,12 @@
     <head>
         <meta charset="UTF-8">
         <title>Dashboard</title>
-        <!-- Include any necessary CSS and JavaScript libraries for charting -->
         <link rel="stylesheet" href="css/dashboard.css">
-        <!-- Include Google Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-        <!-- For example, you might use Chart.js for charting -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     </head>
     <body>
-
-        <!-- Navigation menu -->
         <nav>
-            <img src="images/logo.png" alt="Logo"> <!-- Add this line -->
+            <img src="images/logo.png" alt="Logo">
             <ul>
                 <li><a href="#">Home</a></li>
                 <li><a href="create_member.html">Create New Client</a></li>
@@ -24,26 +18,21 @@
             </ul>
         </nav>
 
-        <!-- Dashboard header -->
         <h2>Optifluence Loan Manager Dashboard</h2>
 
-        <!-- Charts section -->
         <div id="charts">
-            <!-- Charts for loans issued over different time periods -->
             <div class="chart-container">
                 <h3>Loans Issued</h3>
                 <canvas id="loansChart" width="400" height="200"></canvas>
                 <button onclick="downloadChart('loansChart')">Download Chart</button>
             </div>
 
-            <!-- Charts for top borrowers -->
             <div class="chart-container">
                 <h3>Top Borrowers</h3>
                 <canvas id="top-borrowers-chart" width="400" height="200"></canvas>
                 <button onclick="downloadChart('top-borrowers-chart')">Download Chart</button>
             </div>
 
-            <!-- Charts for loans in arrears -->
             <div class="chart-container">
                 <h3>Loans in Arrears</h3>
                 <canvas id="arrears-chart" width="400" height="200"></canvas>
@@ -51,88 +40,30 @@
             </div>
         </div>
 
-    <script>
-        function downloadChart(canvasId) {
-        var canvas = document.getElementById(canvasId);
-        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-        var link = document.createElement('a');
-        link.download = 'chart.png';
-        link.href = image;
-        link.click();
-    }
+        <div id="loans-table-container">
+            <h3>All Loans</h3>
+            <button onclick="exportTableToCSV('loans.csv')">Download CSV</button>
+            <input type="text" id="search-input" placeholder="Search loans..." onkeyup="searchLoans()">
+            <table id="loans-table">
+                <thead>
+                    <tr>
+                        <th>Loan Number</th>
+                        <th>Borrower</th>
+                        <th>Status</th>
+                        <th>Loan Date</th>
+                        <th>Due Date</th>
+                        <th>Loan Amount</th>
+                        <th>Total Penalties</th>
+                        <th>Total Repayments</th>
+                        <th>Loan Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated here -->
+                </tbody>
+            </table>
+        </div>
 
-    function getRandomColor() {
-    var r = Math.floor(Math.random() * 256);
-    var g = Math.floor(Math.random() * 256);
-    var b = Math.floor(Math.random() * 256);
-    return 'rgba(' + r + ', ' + g + ', ' + b + ', 1)';
-}
-
-    window.onload = function() {
-    // Fetch the data for the charts
-    fetch('scripts/fetch_data.php')
-        .then(response => response.json())
-        .then(data => {
-            // data[0] corresponds to the loans and repayments data
-            // data[1] corresponds to the default loans data
-            // data[2] corresponds to the top borrowers data
-
-            // Loans issued and repayments made chart
-            new Chart(document.getElementById('loansChart'), {
-                type: 'line',
-                data: {
-                    labels: data[0].map(item => item.month),
-                    datasets: [
-                        {
-                            label: 'Total Loans',
-                            data: data[0].map(item => item.total_loans),
-                            borderColor: getRandomColor(),
-                            fill: false
-                        },
-                        {
-                            label: 'Total Repayments',
-                            data: data[0].map(item => item.total_repayments),
-                            borderColor: getRandomColor(),
-                            fill: false
-                        }
-                    ]
-                },
-                // ... rest of the chart options
-            });
-
-            // Top borrowers chart
-            new Chart(document.getElementById('top-borrowers-chart'), {
-                type: 'bar',
-                data: {
-                    labels: data[2].map(item => item.borrower),
-                    datasets: [{
-                        label: 'Total Loans',
-                        data: data[2].map(item => item.total),
-                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                // ... rest of the chart options
-            });
-
-            // Default loans chart
-            new Chart(document.getElementById('arrears-chart'), {
-                type: 'line',
-                data: {
-                    labels: data[1].map(item => item.month),
-                    datasets: [{
-                        label: 'Default Loans',
-                        data: data[1].map(item => item.total_loans),
-                        borderColor: 'rgba(255, 159, 64, 1)',
-                        fill: false
-                    }]
-                },
-                // ... rest of the chart options
-            });
-        });
-}
-
-    </script>
+    <script src="scripts/dashboard.js"></script>
 </body>
 </html>

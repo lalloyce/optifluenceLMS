@@ -1,8 +1,8 @@
 <?php
-        // Enable error reporting
-        ini_set('display_errors', 1);
-        ini_set('display_startup_errors', 1);
-        error_reporting(E_ALL);
+    // Enable error reporting
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
 
     // Database connection details
     $servername = "localhost"; // replace with your server name
@@ -59,8 +59,25 @@
         LIMIT 10
     ");
 
+    // Query4: Table of all loans with borrower names, status, dates, balance, and penalties
+    $result4 = $conn->query("
+    SELECT
+        loans.loan_num,
+        CONCAT(borrowers.firstName, ' ', borrowers.lastName) AS borrower,
+        loans.loan_status,
+        loans.loan_date,
+        loans.due_date,
+        loans.loan_amount,
+        COALESCE(SUM(penalties.penalty_amount), 0) AS total_penalties,
+        COALESCE(SUM(repayments.repayment_amount), 0) AS total_repayments,
+        loans.loan_balance
+    FROM loans
+    JOIN borrowers ON loans.borrower_id = borrowers.nationalId
+    ORDER BY loans.loan_date DESC
+    ");
+
     // Check if the queries were successful
-    if (!$result1 || !$result2 || !$result3) {
+    if (!$result1 || !$result2 || !$result3 || !$result4) {
         http_response_code(500);
         die("Error executing query: " . $conn->error);
     }
@@ -69,13 +86,14 @@
     $data1 = $result1->fetch_all(MYSQLI_ASSOC);
     $data2 = $result2->fetch_all(MYSQLI_ASSOC);
     $data3 = $result3->fetch_all(MYSQLI_ASSOC);
+    $data4 = $result4->fetch_all(MYSQLI_ASSOC);
 
     // Check if the fetch was successful
-    if (!$data1 || !$data2 || !$data3) {
+    if (!$data1 || !$data2 || !$data3 || !$data4) {
         http_response_code(500);
         die("Error fetching data: " . $conn->error);
     }
 
     // Output the data in JSON format
-    echo json_encode([$data1, $data2, $data3]);
+    echo json_encode([$data1, $data2, $data3, $data4]);
 ?>
