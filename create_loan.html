@@ -2,12 +2,13 @@
 <html lang="en">
     <!-- Add CSS -->
     <head>
-        <link rel="stylesheet" href="css/styles.css">
+        <link rel="stylesheet" href="css/create_loan.css">
         <!-- Include Google Fonts -->
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <title>Create New Loan</title>
     </head>
     <body>
+    <h2>Create New Loan</h2>
     <script>
         // Check if the success message is set
         if (localStorage.getItem('success_message')) {
@@ -27,7 +28,7 @@
     </script>
 
     <!-- New Loan Form -->
-    <form id="newLoanForm" action="create_loan.php" method="post" class="centered-form">
+    <form id="newLoanForm" action="scripts/create_loan.php" method="post" class="centered-form">
         <label for="nationalId">National ID:</label>
         <input type="number" id="nationalId" name="nationalId" onkeyup="fetchBorrowerDetails(this.value)" required>
 
