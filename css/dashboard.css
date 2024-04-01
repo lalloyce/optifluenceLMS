@@ -10,7 +10,7 @@ nav {
     align-items: center;
     position: sticky;
     top: 0;
-    background-color: #e0e2e6;
+    background-color: #ffffff;
     padding: 10px;
 }
 
@@ -24,7 +24,7 @@ nav ul {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #333;
+    background-color: #333555;
 }
 
 nav ul li {
@@ -93,15 +93,17 @@ h2 {
 
 /* Style the table */
 #loans-table-container {
+    margin-right: 20px;
     width: 100%;
     margin: 20px auto;
 }
 
 #loans-table {
+    margin-top: 20px;
     width: 100%;
     border-collapse: collapse;
     font-size: 16px;
-    color: #333;
+    color: #333555;
 }
 
 #loans-table thead {

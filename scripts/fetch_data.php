@@ -1,26 +1,11 @@
 <?php
-    // Enable error reporting
+
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
 
-    // Database connection details
-    $servername = "localhost"; // replace with your server name
-    $username = "root"; // replace with your username
-    $password = 'D#FR$GG#D'; // replace with your password
-    $dbname = "optiflow"; // replace with your database name
-
-    //set the database
-    $dbname = "optiflow"; // replace with your database name
-
-    // Create connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
-
-    // Check connection
-    if ($conn->connect_error) {
-        http_response_code(500);
-        die("Connection failed: " . $conn->connect_error);
-    }
+    // Include the database connection file
+    require_once '/config/db.php';
 
     // Query 1: Loans issued and repayments made by month
     $result1 = $conn->query("
@@ -59,7 +44,7 @@
         LIMIT 10
     ");
 
-    // Query4: Table of all loans with borrower names, status, dates, balance, and penalties
+    // Query 4: Table of all loans with borrower names, status, dates, balance, and penalties
     $result4 = $conn->query("
     SELECT
         loans.loan_num,
@@ -68,11 +53,21 @@
         loans.loan_date,
         loans.due_date,
         loans.loan_amount,
-        COALESCE(SUM(penalties.penalty_amount), 0) AS total_penalties,
-        COALESCE(SUM(repayments.repayment_amount), 0) AS total_repayments,
+        COALESCE(penalties.total_penalties, 0) AS total_penalties,
+        COALESCE(repayments.total_repayments, 0) AS total_repayments,
         loans.loan_balance
     FROM loans
     JOIN borrowers ON loans.borrower_id = borrowers.nationalId
+    LEFT JOIN (
+        SELECT loan_num, SUM(penalty_amount) AS total_penalties
+        FROM penalties
+        GROUP BY loan_num
+    ) penalties ON loans.loan_num = penalties.loan_num
+    LEFT JOIN (
+        SELECT loan_num, SUM(repayment_amount) AS total_repayments
+        FROM repayments
+        GROUP BY loan_num
+    ) repayments ON loans.loan_num = repayments.loan_num
     ORDER BY loans.loan_date DESC
     ");
 
@@ -96,4 +91,7 @@
 
     // Output the data in JSON format
     echo json_encode([$data1, $data2, $data3, $data4]);
+
+    // Close the connection
+    $conn->close();
 ?>
