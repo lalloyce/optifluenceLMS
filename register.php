@@ -3,7 +3,7 @@
 session_start();
 
 // Include the database connection file
-require_once __DIR__ . '/scripts/db.php';
+require_once __DIR__ . '/config/db.php';
 
 // Check if form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
 <h2>Register</h2>
-<form action="scripts/register.php" method="POST">
+<form action="register.php" method="POST">
     <label for="username">Username:</label>
     <input type="text" id="username" name="username" required><br>
     <label for="email">Email:</label>

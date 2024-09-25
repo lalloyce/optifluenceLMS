@@ -3,7 +3,7 @@
     session_start();
 
     // Include the database connection file
-    require_once __DIR__ . '/config/db.php';
+    require_once __DIR__ . '/../config/db.php'
 
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -50,7 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($checkResult->num_rows > 0) {
         $_SESSION['message'] = 'Borrower with this National ID already exists.';
-        header('Location: dashboard.php');
+        header('Location: dashboard.html');
         exit();
     }
 
@@ -64,10 +64,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($stmt->execute()) {
         $_SESSION['message'] = 'Borrower added successfully.';
-        header('Location: dashboard.php');
+        header('Location: dashboard.html');
     } else {
         $_SESSION['message'] = 'Failed to add borrower.';
-        header('Location: dashboard.php');
+        header('Location: dashboard.html');
     }
 
     $stmt->close();

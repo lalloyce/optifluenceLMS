@@ -2,8 +2,13 @@
 // Start the session if not already started (remove if session started elsewhere)
 session_start();
 
-// Include the database connection file
-require_once __DIR__ . '/config/db.php';
+    // Turn on all error reporting
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    // Include the database connection file
+    require_once __DIR__ . '/config/db.php';
 
 // Check if form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

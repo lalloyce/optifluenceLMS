@@ -1,94 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard</title>
-    <!-- Include any necessary CSS and JavaScript libraries for charting -->
-    <!-- For example, you might use Chart.js for charting -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8">
+        <title>Dashboard</title>
+        <link rel="stylesheet" href="css/dashboard.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    </head>
+    <body>
+        <nav>
+            <img src="images/logo.png" alt="Logo">
+            <ul>
+                <li><a href="#">Home</a></li>
+                <li><a href="create_member.html">Create New Client</a></li>
+                <li><a href="create_loan.html">Create New Loan</a></li>
+                <li><a href="#">Loan Repayment</a></li>
+                <li><a href="logout.php">Logout</a></li>
+            </ul>
+        </nav>
 
-<!-- Navigation menu -->
-<nav>
-    <ul>
-        <li><a href="#">Home</a></li>
-        <li><a href="#">Create New User</a></li>
-        <li><a href="#">Create New Loan</a></li>
-        <li><a href="#">Logout</a></li>
-    </ul>
-</nav>
+        <h2>Optifluence Loan Manager Dashboard</h2>
 
-<!-- Dashboard header -->
-<h2>Dashboard</h2>
+        <div id="charts">
+            <div class="chart-container">
+                <h3>Loans Issued</h3>
+                <canvas id="loansChart" width="400" height="200"></canvas>
+                <button onclick="downloadChart('loansChart')">Download Chart</button>
+            </div>
 
-<!-- Charts section -->
-<div id="charts">
-    <!-- Charts for loans issued over different time periods -->
-    <div class="chart-container">
-        <h3>Loans Issued</h3>
-        <canvas id="loans-chart" width="400" height="200"></canvas>
-        <button onclick="downloadChart('loans-chart')">Download Chart</button>
-    </div>
+            <div class="chart-container">
+                <h3>Top Borrowers</h3>
+                <canvas id="top-borrowers-chart" width="400" height="200"></canvas>
+                <button onclick="downloadChart('top-borrowers-chart')">Download Chart</button>
+            </div>
 
-    <!-- Charts for top borrowers -->
-    <div class="chart-container">
-        <h3>Top Borrowers</h3>
-        <canvas id="top-borrowers-chart" width="400" height="200"></canvas>
-        <button onclick="downloadChart('top-borrowers-chart')">Download Chart</button>
-    </div>
+            <div class="chart-container">
+                <h3>Loans in Arrears</h3>
+                <canvas id="arrears-chart" width="400" height="200"></canvas>
+                <button onclick="downloadChart('arrears-chart')">Download Chart</button>
+            </div>
+        </div>
 
-    <!-- Charts for loans in arrears -->
-    <div class="chart-container">
-        <h3>Loans in Arrears</h3>
-        <canvas id="arrears-chart" width="400" height="200"></canvas>
-        <button onclick="downloadChart('arrears-chart')">Download Chart</button>
-    </div>
+        <div id="loans-table-container">
+            <h3>All Loans</h3>
+            <button onclick="exportTableToCSV('loans.csv')">Download CSV</button>
+            <input type="text" id="search-input" placeholder="Search loans..." onkeyup="searchLoans()">
+            <table id="loans-table">
+                <thead>
+                    <tr>
+                        <th>Loan Number</th>
+                        <th>Borrower</th>
+                        <th>Status</th>
+                        <th>Loan Date</th>
+                        <th>Due Date</th>
+                        <th>Loan Amount</th>
+                        <th>Total Penalties</th>
+                        <th>Total Repayments</th>
+                        <th>Loan Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated here -->
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Charts for all loans -->
-    <div class="chart-container">
-        <h3>All Loans</h3>
-        <canvas id="all-loans-chart" width="400" height="200"></canvas>
-        <button onclick="downloadChart('all-loans-chart')">Download Chart</button>
-    </div>
-</div>
-
-<script>
-    // JavaScript code for charting and downloading charts goes here
-    // You need to write JavaScript functions to fetch data from the server
-    // and create charts using Chart.js library
-    // Example:
-    // var ctx = document.getElementById('loans-chart').getContext('2d');
-    // var myChart = new Chart(ctx, {
-    //     type: 'bar',
-    //     data: {
-    //         labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-    //         datasets: [{
-    //             label: 'Loans Issued',
-    //             data: [65, 59, 80, 81, 56, 55, 40],
-    //             backgroundColor: 'rgba(255, 99, 132, 0.2)',
-    //             borderColor: 'rgba(255, 99, 132, 1)',
-    //             borderWidth: 1
-    //         }]
-    //     },
-    //     options: {
-    //         scales: {
-    //             y: {
-    //                 beginAtZero: true
-    //             }
-    //         }
-    //     }
-    // });
-
-    // Function to download the chart as an image
-    function downloadChart(canvasId) {
-        var canvas = document.getElementById(canvasId);
-        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-        var link = document.createElement('a');
-        link.download = 'chart.png';
-        link.href = image;
-        link.click();
-    }
-</script>
+    <script src="scripts/dashboard.js"></script>
 </body>
 </html>
