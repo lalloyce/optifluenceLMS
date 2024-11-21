@@ -135,3 +135,128 @@ Feel free to submit issues or pull requests for any improvements or bug fixes.
 
 ## License
 This project is licensed under the MIT License.
+
+## Project Phases
+
+### Phase 1 - MVP (Estimated: 4 weeks)
+
+#### Authentication System
+- [x] Basic user registration
+- [ ] Email verification for new accounts
+- [ ] Password reset functionality
+- [ ] Login with email verification
+- [ ] Session management
+
+#### Customer Management (Basic)
+- [ ] Individual customer profiles
+- [ ] Business customer profiles
+- [ ] Customer recommendation system
+- [ ] Basic customer verification
+
+#### Loan Management (Core)
+- [ ] Personal loan processing
+- [ ] Business loan processing
+- [ ] Basic interest calculation
+- [ ] Penalty calculation
+- [ ] Loan status management
+- [ ] Basic repayment processing
+
+#### Account Management
+- [ ] Customer loan accounts
+- [ ] Basic transaction tracking
+- [ ] Simple account statements
+
+### Phase 2 - Enhanced Features (Estimated: 6 weeks)
+
+#### Security Enhancements
+- [ ] Two-factor authentication
+- [ ] Rate limiting
+- [ ] Login attempt tracking
+- [ ] Security audit logging
+- [ ] Session timeout management
+
+#### Advanced Customer Features
+- [ ] Credit scoring system
+- [ ] Referral reward system
+- [ ] Document management
+- [ ] Communication history
+- [ ] Customer relationship tracking
+
+#### Advanced Loan Features
+- [ ] Loan eligibility criteria
+- [ ] Automated payment schedules
+- [ ] Payment reminders
+- [ ] Loan restructuring
+- [ ] Collateral management
+
+#### Financial Management
+- [ ] Double-entry bookkeeping
+- [ ] GL account management
+- [ ] Advanced financial reporting
+- [ ] Portfolio analysis
+
+### Phase 3 - Enterprise Features (Estimated: 8 weeks)
+
+#### Audit & Compliance
+- [ ] Complete audit trail
+- [ ] User action tracking
+- [ ] Regulatory reporting
+- [ ] Compliance monitoring
+
+#### Advanced Analytics
+- [ ] Risk analysis
+- [ ] Default prediction
+- [ ] Customer behavior analysis
+- [ ] Portfolio performance metrics
+
+#### Integration & API
+- [ ] REST API development
+- [ ] Payment gateway integration
+- [ ] SMS notification system
+- [ ] External reporting integration
+
+## Technical Stack
+
+- Backend: Django 4.x
+- Database: PostgreSQL
+- Authentication: Django REST framework + JWT
+- Email: Django-mail + Celery
+- Task Queue: Celery + Redis
+- Frontend: Django Templates + Bootstrap (MVP), React (Phase 2)
+
+## MVP Database Schema
+
+### Users
+- Authentication details
+- Email verification
+- Password reset
+- Login verification
+
+### Customers
+- Individual/Business type
+- Basic details
+- Recommender relationship
+- Verification status
+
+### Loans
+- Personal/Business type
+- Amount, interest, penalties
+- Status management
+- Payment tracking
+
+### Accounts
+- Customer loan accounts
+- Transaction history
+- Balance management
+
+## Getting Started
+
+[Installation and setup instructions will be added]
+
+## Contributing
+
+[Contribution guidelines will be added]
+
+## License
+
+[License information will be added]
