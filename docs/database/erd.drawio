@@ -1,0 +1,70 @@
+&lt;mxfile host="app.diagrams.net" modified="2024-01-21T12:00:00.000Z" agent="Mozilla/5.0" version="21.0.2" type="device"&gt;
+  &lt;diagram id="optifluence-lms-erd" name="OptifluenceLMS ERD"&gt;
+    &lt;mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"&gt;
+      &lt;root&gt;
+        &lt;mxCell id="0"/&gt;
+        &lt;mxCell id="1" parent="0"/&gt;
+        
+        &lt;!-- Users --&gt;
+        &lt;mxCell id="users" value="Users&#xa;--&#xa;id (UUID PK)&#xa;email (unique)&#xa;password&#xa;is_active&#xa;is_staff&#xa;is_superuser&#xa;date_joined&#xa;last_login&#xa;first_name&#xa;last_name" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=180;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="40" y="40" width="200" height="180" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- User Profiles --&gt;
+        &lt;mxCell id="user_profiles" value="User Profiles&#xa;--&#xa;id (UUID PK)&#xa;user_id (FK)&#xa;phone_number&#xa;address&#xa;profile_picture" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=140;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="300" y="40" width="200" height="140" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Customers --&gt;
+        &lt;mxCell id="customers" value="Customers&#xa;--&#xa;id (UUID PK)&#xa;user_id (FK)&#xa;national_id&#xa;occupation&#xa;business_name&#xa;business_type&#xa;monthly_income&#xa;credit_score&#xa;status" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=200;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="40" y="280" width="200" height="200" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Loan Products --&gt;
+        &lt;mxCell id="loan_products" value="Loan Products&#xa;--&#xa;id (UUID PK)&#xa;name&#xa;description&#xa;interest_rate&#xa;term_min&#xa;term_max&#xa;amount_min&#xa;amount_max&#xa;late_fee_percentage&#xa;processing_fee_percentage&#xa;status" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=220;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="300" y="280" width="200" height="220" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Loans --&gt;
+        &lt;mxCell id="loans" value="Loans&#xa;--&#xa;id (UUID PK)&#xa;customer_id (FK)&#xa;product_id (FK)&#xa;loan_number&#xa;principal_amount&#xa;interest_rate&#xa;term_months&#xa;status&#xa;disbursed_amount&#xa;disbursed_date&#xa;first_payment_date&#xa;last_payment_date&#xa;approved_by&#xa;approved_at" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=280;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="560" y="40" width="200" height="280" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Transactions --&gt;
+        &lt;mxCell id="transactions" value="Transactions&#xa;--&#xa;id (UUID PK)&#xa;loan_id (FK)&#xa;transaction_type&#xa;amount&#xa;payment_method&#xa;reference_number&#xa;status&#xa;processed_by&#xa;processed_at" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=180;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="560" y="380" width="200" height="180" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Repayment Schedule --&gt;
+        &lt;mxCell id="repayment_schedule" value="Repayment Schedule&#xa;--&#xa;id (UUID PK)&#xa;loan_id (FK)&#xa;due_date&#xa;principal_amount&#xa;interest_amount&#xa;late_fee&#xa;total_amount&#xa;paid_amount&#xa;status" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=180;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1"&gt;
+          &lt;mxGeometry x="820" y="40" width="200" height="180" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;!-- Relationships --&gt;
+        &lt;mxCell id="users-profiles" value="" style="endArrow=ERoneToOne;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="users" target="user_profiles"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;mxCell id="users-customers" value="" style="endArrow=ERoneToOne;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="users" target="customers"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;mxCell id="customers-loans" value="" style="endArrow=ERzeroToMany;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="customers" target="loans"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;mxCell id="products-loans" value="" style="endArrow=ERzeroToMany;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="loan_products" target="loans"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;mxCell id="loans-transactions" value="" style="endArrow=ERzeroToMany;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="loans" target="transactions"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+        
+        &lt;mxCell id="loans-repayments" value="" style="endArrow=ERzeroToMany;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endFill=0;" edge="1" parent="1" source="loans" target="repayment_schedule"&gt;
+          &lt;mxGeometry relative="1" as="geometry"/&gt;
+        &lt;/mxCell&gt;
+      &lt;/root&gt;
+    &lt;/mxGraphModel&gt;
+  &lt;/diagram&gt;
+&lt;/mxfile&gt;
