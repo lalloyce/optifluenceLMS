@@ -1,262 +1,149 @@
-# optifluenceLoanSystem
+# OptifluenceLMS - Loan Management System
 
-# Lending Business Database
+A comprehensive loan management system built with Django 5.0 and Supabase, designed to streamline loan processing, customer management, and financial tracking.
 
-## Overview
+## Project Structure
 
-This project implements a comprehensive database system for a lending business. It manages customer information, loan issuance, repayments, penalties, and provides various reports and analytics features.
+```
+optifluenceLMS/
+├── apps/                    # Django applications
+│   ├── accounts/           # User authentication and profiles
+│   ├── customers/          # Customer management
+│   ├── loans/              # Loan products and applications
+│   └── transactions/       # Financial transactions and repayments
+├── config/                 # Project configuration
+│   ├── settings/          # Environment-specific settings
+│   ├── urls.py            # URL routing
+│   └── wsgi.py            # WSGI configuration
+├── docs/                   # Project documentation
+│   ├── erd.drawio         # Entity Relationship Diagram
+│   └── database.sql       # Database schema
+├── static/                # Static files (CSS, JS, Images)
+│   ├── css/              # Stylesheets
+│   └── images/           # Static images
+├── media/                 # User-uploaded files
+├── templates/             # HTML templates
+│   ├── base.html         # Base template
+│   └── includes/         # Reusable template parts
+├── .env                   # Environment variables (not in git)
+├── .env.example          # Example environment configuration
+├── .gitignore            # Git ignore rules
+├── LICENSE               # Project license
+├── README.md             # Project documentation
+├── manage.py             # Django management script
+└── requirements.txt      # Python dependencies
+
+```
 
 ## Features
 
-- Customer management (individuals and businesses)
-- Loan management (personal and business loans)
-- Automated interest calculation
-- Penalty application for overdue loans
-- Overpayment handling
-- Comprehensive transaction tracking
-- Customizable loan types
-- Detailed reporting and analytics
+- User Authentication and Authorization
+- Customer Management
+- Loan Product Configuration
+- Loan Application Processing
+- Document Management
+- Transaction Tracking
+- Repayment Scheduling
+- Email Notifications
 
-## Database Schema
+## Technology Stack
 
-The database consists of the following main tables:
+- Python 3.12
+- Django 5.0
+- Supabase (PostgreSQL)
+- Django REST Framework
+- Simple JWT Authentication
+- MailerSend (Email Service)
+- Celery (Task Queue)
+- Redis (Message Broker)
 
-1. `Customers`: Stores customer information
-2. `LoanTypes`: Defines different types of loans
-3. `Loans`: Records individual loans
-4. `Transactions`: Tracks all financial transactions
-5. `CustomerAccounts`: Maintains running balances for customers
-6. `Overpayments`: Records customer overpayments
+## Setup
 
-## Setup Instructions
-
-1. Ensure you have MySQL (version 5.7 or higher) installed on your system.
-2. Clone this repository to your local machine.
-3. Connect to your MySQL server using a client of your choice.
-4. Run the SQL scripts in the following order:
-   - `schema.sql`: Creates the database structure
-   - `procedures.sql`: Adds stored procedures and functions
-   - `triggers.sql`: Sets up necessary triggers
-   - `events.sql`: Creates scheduled events
-
-## Usage
-
-### Issuing a Loan
-
-To issue a new loan, use the `IssueLoan` stored procedure:
-
-```sql
-CALL IssueLoan(CustomerID, LoanTypeID, Amount);
-```
-
-### Processing a Repayment
-
-To process a loan repayment, use the `ProcessRepayment` stored procedure:
-
-```sql
-CALL ProcessRepayment(LoanID, Amount, PaymentMethod);
-```
-
-### Generating Reports
-
-1. Outstanding Loans Report:
-   ```sql
-   CALL GetOutstandingLoansReport();
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/optifluenceLMS.git
+   cd optifluenceLMS
    ```
 
-2. Customer Statement:
-   ```sql
-   CALL GenerateCustomerStatement(CustomerID, StartDate, EndDate);
+2. Create and activate virtual environment:
+   ```bash
+   python -m venv venv312
+   source venv312/bin/activate  # On Windows: venv312\Scripts\activate
    ```
 
-## Automated Processes
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-- Daily penalty application is handled by the `apply_penalties` event, which runs automatically every day.
-- Overpayments are automatically applied to outstanding loans when processing repayments or issuing new loans.
+4. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-## Customization
+5. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
 
-To add new loan types, insert records into the `LoanTypes` table:
+6. Create superuser:
+   ```bash
+   python manage.py createsuperuser
+   ```
 
-```sql
-INSERT INTO LoanTypes (Name, InterestRate, RepaymentPeriod, GracePeriod, PenaltyRate)
-VALUES ('New Loan Type', 12.00, 90, 0, 15.00);
+7. Run development server:
+   ```bash
+   python manage.py runserver
+   ```
+
+## Environment Variables
+
+See `.env.example` for required environment variables.
+
+## Development
+
+1. Create new branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make changes and commit:
+   ```bash
+   git add .
+   git commit -m "Description of changes"
+   ```
+
+3. Push changes:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+4. Create pull request on GitHub
+
+## Testing
+
+Run tests with:
+```bash
+python manage.py test
 ```
-
-## Best Practices
-
-1. Regularly backup your database.
-2. Monitor database performance and optimize queries as needed.
-3. Implement proper security measures, including user authentication and authorization.
-4. Regularly review and update interest rates and penalty calculations as per business requirements.
-
-## Contributing
-
-Contributions to improve the database schema, add new features, or optimize existing processes are welcome. Please submit a pull request with your proposed changes.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the terms of the license included in the repository.
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create pull request
+
+## Security
+
+Report security issues to [security contact]
 
 ## Support
 
-For any questions or support, please open an issue in the GitHub repository or contact the database administrator.
-
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/optifluence/optifluenceLMS.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd optifluenceLMS
-   ```
-3. Install the dependencies:
-   ```bash
-   npm install
-   ```
-
-## Usage
-1. Create a `.env` file in the root directory with the required environment variables.
-2. Start the server:
-   ```bash
-   npm start
-   ```
-3. Access the application at `http://localhost:3000`.
-
-## API Endpoints
-- **POST** `/api/register`: Register a new user.
-- **POST** `/api/login`: Log in an existing user.
-- **POST** `/api/reset-password`: Request a password reset.
-- **GET** `/verify/:token`: Verify user account.
-
-## Contributing
-Feel free to submit issues or pull requests for any improvements or bug fixes.
-
-## License
-This project is licensed under the MIT License.
-
-## Project Phases
-
-### Phase 1 - MVP (Estimated: 4 weeks)
-
-#### Authentication System
-- [x] Basic user registration
-- [ ] Email verification for new accounts
-- [ ] Password reset functionality
-- [ ] Login with email verification
-- [ ] Session management
-
-#### Customer Management (Basic)
-- [ ] Individual customer profiles
-- [ ] Business customer profiles
-- [ ] Customer recommendation system
-- [ ] Basic customer verification
-
-#### Loan Management (Core)
-- [ ] Personal loan processing
-- [ ] Business loan processing
-- [ ] Basic interest calculation
-- [ ] Penalty calculation
-- [ ] Loan status management
-- [ ] Basic repayment processing
-
-#### Account Management
-- [ ] Customer loan accounts
-- [ ] Basic transaction tracking
-- [ ] Simple account statements
-
-### Phase 2 - Enhanced Features (Estimated: 6 weeks)
-
-#### Security Enhancements
-- [ ] Two-factor authentication
-- [ ] Rate limiting
-- [ ] Login attempt tracking
-- [ ] Security audit logging
-- [ ] Session timeout management
-
-#### Advanced Customer Features
-- [ ] Credit scoring system
-- [ ] Referral reward system
-- [ ] Document management
-- [ ] Communication history
-- [ ] Customer relationship tracking
-
-#### Advanced Loan Features
-- [ ] Loan eligibility criteria
-- [ ] Automated payment schedules
-- [ ] Payment reminders
-- [ ] Loan restructuring
-- [ ] Collateral management
-
-#### Financial Management
-- [ ] Double-entry bookkeeping
-- [ ] GL account management
-- [ ] Advanced financial reporting
-- [ ] Portfolio analysis
-
-### Phase 3 - Enterprise Features (Estimated: 8 weeks)
-
-#### Audit & Compliance
-- [ ] Complete audit trail
-- [ ] User action tracking
-- [ ] Regulatory reporting
-- [ ] Compliance monitoring
-
-#### Advanced Analytics
-- [ ] Risk analysis
-- [ ] Default prediction
-- [ ] Customer behavior analysis
-- [ ] Portfolio performance metrics
-
-#### Integration & API
-- [ ] REST API development
-- [ ] Payment gateway integration
-- [ ] SMS notification system
-- [ ] External reporting integration
-
-## Technical Stack
-
-- Backend: Django 4.x
-- Database: PostgreSQL
-- Authentication: Django REST framework + JWT
-- Email: Django-mail + Celery
-- Task Queue: Celery + Redis
-- Frontend: Django Templates + Bootstrap (MVP), React (Phase 2)
-
-## MVP Database Schema
-
-### Users
-- Authentication details
-- Email verification
-- Password reset
-- Login verification
-
-### Customers
-- Individual/Business type
-- Basic details
-- Recommender relationship
-- Verification status
-
-### Loans
-- Personal/Business type
-- Amount, interest, penalties
-- Status management
-- Payment tracking
-
-### Accounts
-- Customer loan accounts
-- Transaction history
-- Balance management
-
-## Getting Started
-
-[Installation and setup instructions will be added]
-
-## Contributing
-
-[Contribution guidelines will be added]
-
-## License
-
-[License information will be added]
+For support, email [support contact]
