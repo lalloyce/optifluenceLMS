@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .alert { background: #fff3f3; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0; }
+        .details { background: #f9f9f9; padding: 15px; margin: 10px 0; }
+        .risk-score { font-size: 24px; font-weight: bold; color: #ff0000; }
+        .button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="alert">
+        <h2>🚨 High Risk Loan Application</h2>
+        <p><strong>Loan Reference:</strong> {{ loan.reference_number }}</p>
+        <p><strong>Customer:</strong> {{ customer.full_name }}</p>
+        <p><strong>Risk Score:</strong> <span class="risk-score">{{ risk_score }}</span></p>
+    </div>
+
+    <div class="details">
+        <h3>Risk Factors</h3>
+        <ul>
+            {% for factor, details in risk_factors.items %}
+            <li>
+                <strong>{{ factor|title }}:</strong>
+                <ul>
+                    {% for key, value in details.items %}
+                    <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <p>
+        <a href="{{ dashboard_url }}" class="button">Review in Dashboard</a>
+    </p>
+
+    <p><small>This is an automated message. Please do not reply to this email.</small></p>
+</body>
+</html>

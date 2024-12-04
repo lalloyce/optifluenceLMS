@@ -1,0 +1,946 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ customer.get_full_name }} - Customer Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .status-active { background-color: #d1fae5; color: #065f46; }
+    .status-inactive { background-color: #fee2e2; color: #991b1b; }
+    .status-verified { background-color: #dbeafe; color: #1e40af; }
+    .status-pending { background-color: #fef3c7; color: #92400e; }
+    .status-rejected { background-color: #fee2e2; color: #991b1b; }
+    
+    .profile-header {
+        background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #4b5563;
+        margin-bottom: 1rem;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .loan-card {
+        transition: all 0.3s ease;
+    }
+    
+    .loan-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        height: 400px;
+    }
+    
+    .chart-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .chart-toolbar select {
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        border-color: #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Search Bar -->
+    <div class="mb-8">
+        <form method="GET" action="{% url 'web_customers:customers.list' %}" class="flex gap-4">
+            <input type="text" name="q" placeholder="Search customers..." 
+                   class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                   value="{{ request.GET.q }}">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Search
+            </button>
+        </form>
+    </div>
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="flex items-center gap-6">
+            {% if customer.profile_picture %}
+                <img src="{{ customer.profile_picture.url }}" alt="{{ customer.get_full_name }}" 
+                     class="profile-avatar">
+            {% else %}
+                <div class="profile-avatar">{{ customer.get_initials }}</div>
+            {% endif %}
+            
+            <div class="flex-1">
+                <div class="flex items-center gap-4 mb-4">
+                    <h1 class="text-3xl font-bold">{{ customer.get_full_name }}</h1>
+                    <span class="status-badge {% if customer.is_active %}status-active{% else %}status-inactive{% endif %}">
+                        {{ customer.is_active|yesno:"Active,Inactive" }}
+                    </span>
+                    <span class="status-badge status-{{ customer.verification_status|lower }}">
+                        {{ customer.get_verification_status_display }}
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <p class="text-gray-300">Customer ID</p>
+                        <p class="font-medium">{{ customer.id }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-300">Member Since</p>
+                        <p class="font-medium">{{ customer.created_at|date:"F j, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-300">Customer Type</p>
+                        <p class="font-medium">{{ customer.get_customer_type_display }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-300">Credit Score</p>
+                        <p class="font-medium">{{ customer.credit_score|default:"Not Available" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <a href="{% url 'web_customers:customers.edit' customer.id %}" 
+                   class="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Edit Profile
+                </a>
+                {% if perms.customers.delete_customer %}
+                <form method="POST" action="{% url 'web_customers:customers.delete' customer.id %}" 
+                      onsubmit="return confirm('Are you sure you want to delete this customer?');">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        Delete
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-8">
+        <!-- Contact Information -->
+        <div class="info-card">
+            <h2 class="text-xl font-semibold mb-4">Contact Information</h2>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-gray-500">Email</p>
+                    <p class="font-medium">{{ customer.email }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Phone</p>
+                    <p class="font-medium">{{ customer.phone_number }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Address</p>
+                    <p class="font-medium">
+                        {{ customer.address }}<br>
+                        {{ customer.city }}, {{ customer.state }} {{ customer.postal_code }}<br>
+                        {{ customer.country }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Information (if applicable) -->
+        {% if customer.is_business and customer.business_profile %}
+        <div class="info-card">
+            <h2 class="text-xl font-semibold mb-4">Business Information</h2>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-gray-500">Business Name</p>
+                    <p class="font-medium">{{ customer.business_profile.business_name }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Business Type</p>
+                    <p class="font-medium">{{ customer.business_profile.get_business_type_display }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Registration Number</p>
+                    <p class="font-medium">{{ customer.business_profile.registration_number|default:"Not Available" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Tax ID</p>
+                    <p class="font-medium">{{ customer.business_profile.tax_id|default:"Not Available" }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Customer Insights -->
+        <div class="info-card">
+            <h2 class="text-xl font-semibold mb-4">Customer Insights</h2>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-gray-500">Profile Completion</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ profile_completion }}%"></div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">{{ profile_completion|floatformat:0 }}% Complete</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Recommendation Score</p>
+                    <p class="font-medium">{{ customer.recommendation_score|default:"Not Available" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Risk Rating</p>
+                    <p class="font-medium">{{ customer.risk_rating|default:"Not Available" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan History -->
+    <div class="mt-8">
+        <h2 class="text-2xl font-semibold mb-6">Loan History</h2>
+        {% if loans %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for loan in loans %}
+            <div class="loan-card info-card">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-semibold">{{ loan.get_loan_type_display }}</h3>
+                        <p class="text-gray-500">{{ loan.reference_number }}</p>
+                    </div>
+                    <span class="status-badge status-{{ loan.status|lower }}">
+                        {{ loan.get_status_display }}
+                    </span>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Amount</span>
+                        <span class="font-medium">KES {{ loan.amount|intcomma }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Date</span>
+                        <span>{{ loan.application_date|date:"M j, Y" }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Term</span>
+                        <span>{{ loan.term_months }} months</span>
+                    </div>
+                    {% if loan.status == 'ACTIVE' %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Outstanding</span>
+                        <span class="font-medium">KES {{ loan.get_outstanding_amount|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mt-4 pt-4 border-t">
+                    <a href="{% url 'web_loans:loans.detail' loan.id %}" 
+                       class="text-blue-600 hover:text-blue-800 font-medium">
+                        View Details →
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">No loan history available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Loan Repayment Chart -->
+    <div class="mt-8">
+        <h2 class="text-2xl font-semibold mb-6">Loan Repayment Analysis</h2>
+        <div class="chart-toolbar">
+            <select id="loanSelector" class="form-select">
+                {% for loan in loans %}
+                <option value="{{ loan.id }}">{{ loan.reference_number }} - KES {{ loan.amount|intcomma }}</option>
+                {% endfor %}
+            </select>
+            <div class="flex items-center gap-4 flex-grow">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Expected Payments</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Actual Payments</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Overdue</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="exportCSV" class="btn btn-secondary">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export CSV
+                </button>
+                <button id="exportPDF" class="btn btn-secondary">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Export PDF
+                </button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="loanRepaymentChart"></canvas>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+            <div class="info-card">
+                <h3 class="text-lg font-semibold mb-2">Total Expected</h3>
+                <p class="text-3xl font-bold text-blue-600" id="totalExpected">KES 0</p>
+            </div>
+            <div class="info-card">
+                <h3 class="text-lg font-semibold mb-2">Total Paid</h3>
+                <p class="text-3xl font-bold text-green-600" id="totalPaid">KES 0</p>
+            </div>
+            <div class="info-card">
+                <h3 class="text-lg font-semibold mb-2">Outstanding Balance</h3>
+                <p class="text-3xl font-bold text-red-600" id="outstandingBalance">KES 0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History Table -->
+    <div class="mt-8">
+        <h2 class="text-2xl font-semibold mb-6">Payment History</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200" id="paymentHistoryTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="paymentHistoryBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-500" id="tableInfo"></div>
+                    <div class="flex gap-2">
+                        <button id="prevPage" class="btn btn-secondary btn-sm">&larr; Previous</button>
+                        <button id="nextPage" class="btn btn-secondary btn-sm">Next &rarr;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="transactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-xl font-semibold" id="modalTitle">Transaction Details</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="modalContent" class="mt-4 max-h-[70vh] overflow-y-auto">
+                <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Guarantor Information -->
+    <div class="mt-8">
+        <h2 class="text-2xl font-semibold mb-6">Guarantor Information</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Loans Guaranteed -->
+            <div class="info-card">
+                <h3 class="text-xl font-semibold mb-4">Loans Guaranteed</h3>
+                {% if guaranteed_loans %}
+                <div class="space-y-4">
+                    {% for guarantee in guaranteed_loans %}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="font-medium">{{ guarantee.loan.borrower.get_full_name }}</p>
+                            <p class="text-sm text-gray-500">
+                                KES {{ guarantee.amount|intcomma }} - {{ guarantee.loan.get_status_display }}
+                            </p>
+                        </div>
+                        <a href="{% url 'web_loans:loans.detail' guarantee.loan.id %}" 
+                           class="text-blue-600 hover:text-blue-800">
+                            View Loan →
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500">No loans guaranteed.</p>
+                {% endif %}
+            </div>
+
+            <!-- Loan Guarantors -->
+            <div class="info-card">
+                <h3 class="text-xl font-semibold mb-4">Loan Guarantors</h3>
+                {% if loan_guarantors %}
+                <div class="space-y-4">
+                    {% for guarantee in loan_guarantors %}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="font-medium">{{ guarantee.guarantor.get_full_name }}</p>
+                            <p class="text-sm text-gray-500">
+                                KES {{ guarantee.amount|intcomma }} - {{ guarantee.loan.get_status_display }}
+                            </p>
+                        </div>
+                        <a href="{% url 'web_customers:customers.detail' guarantee.guarantor.id %}" 
+                           class="text-blue-600 hover:text-blue-800">
+                            View Profile →
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500">No guarantors found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loanData = {{ loan_data|safe }};
+    let chart = null;
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let currentLoanId = null;
+    
+    function formatCurrency(amount) {
+        return 'KES ' + new Intl.NumberFormat().format(amount);
+    }
+    
+    function updateChart(loanId) {
+        const loan = loanData.find(l => l.loan_id === parseInt(loanId));
+        if (!loan) return;
+        
+        // Prepare data
+        const startDate = moment(loan.disbursement_date);
+        const endDate = moment(loan.disbursement_date).add(loan.term_months, 'months');
+        const labels = [];
+        const expectedData = [];
+        const actualData = [];
+        const overdueData = [];
+        
+        // Generate monthly labels
+        let currentDate = moment(startDate);
+        while (currentDate.isSameOrBefore(endDate)) {
+            labels.push(currentDate.format('MMM YYYY'));
+            currentDate.add(1, 'month');
+        }
+        
+        // Calculate expected payments per month
+        const monthlyExpected = loan.amount / loan.term_months;
+        labels.forEach((_, index) => {
+            expectedData.push(monthlyExpected);
+        });
+        
+        // Calculate actual payments
+        labels.forEach((label, index) => {
+            const monthStart = moment(startDate).add(index, 'months');
+            const monthEnd = moment(monthStart).endOf('month');
+            
+            const monthlyPayments = loan.payments
+                .filter(p => {
+                    const paymentDate = moment(p.payment_date);
+                    return paymentDate.isBetween(monthStart, monthEnd, null, '[]');
+                })
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            actualData.push(monthlyPayments);
+            
+            // Calculate overdue amount
+            const expectedToDate = monthlyExpected * (index + 1);
+            const paidToDate = actualData.reduce((sum, amount) => sum + amount, 0);
+            const overdue = Math.max(0, expectedToDate - paidToDate);
+            overdueData.push(overdue);
+        });
+        
+        // Update summary cards
+        const totalExpected = monthlyExpected * loan.term_months;
+        const totalPaid = loan.payments.reduce((sum, p) => sum + p.amount, 0);
+        const outstanding = Math.max(0, totalExpected - totalPaid);
+        
+        document.getElementById('totalExpected').textContent = formatCurrency(totalExpected);
+        document.getElementById('totalPaid').textContent = formatCurrency(totalPaid);
+        document.getElementById('outstandingBalance').textContent = formatCurrency(outstanding);
+        
+        // Create or update chart
+        const ctx = document.getElementById('loanRepaymentChart').getContext('2d');
+        
+        if (chart) {
+            chart.destroy();
+        }
+        
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Expected Payment',
+                        data: expectedData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1,
+                        order: 2
+                    },
+                    {
+                        label: 'Actual Payment',
+                        data: actualData,
+                        backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                        borderColor: 'rgb(34, 197, 94)',
+                        borderWidth: 1,
+                        order: 1
+                    },
+                    {
+                        label: 'Overdue',
+                        data: overdueData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                        borderColor: 'rgb(239, 68, 68)',
+                        borderWidth: 1,
+                        type: 'line',
+                        order: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'KES ' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': KES ' + 
+                                       context.raw.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function showTransactionDetails(transaction) {
+        const modal = document.getElementById('transactionModal');
+        const modalContent = document.getElementById('modalContent');
+        
+        let detailsHtml = '<div class="space-y-6">';
+        
+        if (transaction.type === 'Installment') {
+            detailsHtml += `
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 mb-3">Installment Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="mb-2"><span class="text-gray-600">Installment Number:</span> ${transaction.installment_number}</p>
+                            <p class="mb-2"><span class="text-gray-600">Due Date:</span> ${moment(transaction.date).format('DD MMM YYYY')}</p>
+                            <p class="mb-2"><span class="text-gray-600">Principal:</span> KES ${transaction.principal.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p class="mb-2"><span class="text-gray-600">Interest:</span> KES ${transaction.interest.toLocaleString()}</p>
+                            ${transaction.penalties > 0 ? `<p class="mb-2"><span class="text-gray-600">Penalties:</span> KES ${transaction.penalties.toLocaleString()}</p>` : ''}
+                            ${transaction.days_overdue > 0 ? `<p class="mb-2"><span class="text-red-600">Days Overdue:</span> ${transaction.days_overdue}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Basic Payment Details
+            detailsHtml += `
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-700 mb-3">Payment Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="mb-2"><span class="text-gray-600">Reference:</span> ${transaction.reference}</p>
+                            <p class="mb-2"><span class="text-gray-600">Date:</span> ${moment(transaction.payment_date).format('DD MMM YYYY')}</p>
+                            <p class="mb-2"><span class="text-gray-600">Amount:</span> KES ${transaction.amount.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p class="mb-2"><span class="text-gray-600">Method:</span> ${transaction.payment_method}</p>
+                            <p class="mb-2"><span class="text-gray-600">Created By:</span> ${transaction.created_by}</p>
+                            <p class="mb-2"><span class="text-gray-600">Created At:</span> ${transaction.created_at}</p>
+                        </div>
+                    </div>
+                    ${transaction.notes ? `
+                        <div class="mt-2">
+                            <p class="mb-2"><span class="text-gray-600">Notes:</span></p>
+                            <p class="bg-white p-2 rounded">${transaction.notes}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Payment Allocations
+            if (transaction.allocations && transaction.allocations.length > 0) {
+                detailsHtml += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-3">Payment Allocations</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Installment</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Amount</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Type</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${transaction.allocations.map(alloc => `
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">#${alloc.installment_number}</td>
+                                            <td class="px-4 py-2 text-sm">KES ${alloc.amount.toLocaleString()}</td>
+                                            <td class="px-4 py-2 text-sm">${alloc.allocation_type}</td>
+                                            <td class="px-4 py-2 text-sm">${alloc.created_at}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Documents
+            if (transaction.documents && transaction.documents.length > 0) {
+                detailsHtml += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-3">Documents</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${transaction.documents.map(doc => `
+                                <div class="bg-white p-3 rounded-lg shadow-sm flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium">${doc.name}</p>
+                                        <p class="text-sm text-gray-500">
+                                            Uploaded by ${doc.uploaded_by} on ${moment(doc.uploaded_at).format('DD MMM YYYY HH:mm')}
+                                        </p>
+                                    </div>
+                                    ${doc.file_url ? `
+                                        <a href="${doc.file_url}" target="_blank" class="text-indigo-600 hover:text-indigo-900">
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </a>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Audit Trail
+            if (transaction.audit_trail && transaction.audit_trail.length > 0) {
+                detailsHtml += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-3">Audit Trail</h4>
+                        <div class="space-y-3">
+                            ${transaction.audit_trail.map(log => `
+                                <div class="bg-white p-3 rounded-lg shadow-sm">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium">${log.action}</p>
+                                            <p class="text-sm text-gray-500">By ${log.user}</p>
+                                        </div>
+                                        <p class="text-sm text-gray-500">${moment(log.timestamp).format('DD MMM YYYY HH:mm')}</p>
+                                    </div>
+                                    ${log.details ? `
+                                        <p class="mt-2 text-sm text-gray-600">${log.details}</p>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // MPesa Details (if applicable)
+            if (transaction.transaction_type === 'MPesa') {
+                detailsHtml += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-3">MPesa Details</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="mb-2"><span class="text-gray-600">Receipt:</span> ${transaction.mpesa_receipt}</p>
+                                <p class="mb-2"><span class="text-gray-600">Phone:</span> ${transaction.mpesa_phone}</p>
+                                <p class="mb-2"><span class="text-gray-600">Name:</span> ${transaction.mpesa_name}</p>
+                            </div>
+                            <div>
+                                <p class="mb-2"><span class="text-gray-600">Time:</span> ${transaction.mpesa_time}</p>
+                                <p class="mb-2"><span class="text-gray-600">Status:</span> ${transaction.mpesa_status}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        detailsHtml += '</div>';
+        modalContent.innerHTML = detailsHtml;
+        modal.classList.remove('hidden');
+    }
+    
+    function updatePaymentHistory(loanId) {
+        const loan = loanData.find(l => l.loan_id === parseInt(loanId));
+        if (!loan) return;
+        
+        // Combine installments and payments into one array
+        const allTransactions = [
+            ...loan.installments.map(i => ({
+                date: i.due_date,
+                type: 'Installment',
+                amount: i.amount,
+                principal: i.principal,
+                interest: i.interest,
+                penalties: i.penalties,
+                status: i.status,
+                method: '-',
+                isPayment: false,
+                installment_number: i.installment_number,
+                days_overdue: i.days_overdue
+            })),
+            ...loan.payments.map(p => ({
+                ...p,
+                date: p.payment_date,
+                type: 'Payment',
+                isPayment: true
+            }))
+        ].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+        
+        // Calculate running balance
+        let balance = loan.amount;
+        allTransactions.forEach(t => {
+            if (t.isPayment) {
+                balance -= t.amount;
+            }
+            t.balance = balance;
+        });
+        
+        // Pagination
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedTransactions = allTransactions.slice(startIndex, endIndex);
+        
+        // Update table
+        const tbody = document.getElementById('paymentHistoryBody');
+        tbody.innerHTML = paginatedTransactions.map(t => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${moment(t.date).format('DD MMM YYYY')}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${t.type}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${t.type === 'Installment' 
+                        ? `Installment #${t.installment_number}${t.days_overdue > 0 ? ` (${t.days_overdue} days overdue)` : ''}`
+                        : `${t.transaction_type} - ${t.reference}`
+                    }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${t.isPayment ? 'text-green-600' : 'text-blue-600'}">
+                    KES ${t.amount.toLocaleString()}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${t.status === 'Completed' ? 'bg-green-100 text-green-800' : 
+                          t.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-red-100 text-red-800'}">
+                        ${t.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${t.method}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    KES ${t.balance.toLocaleString()}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <button onclick='showTransactionDetails(${JSON.stringify(t)})' 
+                            class="text-indigo-600 hover:text-indigo-900">
+                        View Details
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // Update pagination info
+        document.getElementById('tableInfo').textContent = 
+            `Showing ${startIndex + 1} to ${Math.min(endIndex, allTransactions.length)} of ${allTransactions.length} entries`;
+        
+        // Update pagination buttons
+        document.getElementById('prevPage').disabled = currentPage === 1;
+        document.getElementById('nextPage').disabled = endIndex >= allTransactions.length;
+        
+        return allTransactions;
+    }
+    
+    function exportToCSV(loanId) {
+        const loan = loanData.find(l => l.loan_id === parseInt(loanId));
+        if (!loan) return;
+        
+        const allTransactions = updatePaymentHistory(loanId);
+        const csvContent = [
+            ['Date', 'Type', 'Amount', 'Status', 'Method', 'Balance'],
+            ...allTransactions.map(t => [
+                moment(t.date).format('YYYY-MM-DD'),
+                t.type,
+                t.amount,
+                t.status,
+                t.method,
+                t.balance
+            ])
+        ].map(row => row.join(',')).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `loan_history_${loan.reference_number}.csv`;
+        link.click();
+    }
+    
+    function exportToPDF(loanId) {
+        const loan = loanData.find(l => l.loan_id === parseInt(loanId));
+        if (!loan) return;
+        
+        const allTransactions = updatePaymentHistory(loanId);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Add title
+        doc.setFontSize(16);
+        doc.text(`Loan Payment History - ${loan.reference_number}`, 14, 15);
+        
+        // Add loan details
+        doc.setFontSize(12);
+        doc.text(`Amount: KES ${loan.amount.toLocaleString()}`, 14, 25);
+        doc.text(`Term: ${loan.term_months} months`, 14, 32);
+        
+        // Add transaction table
+        doc.autoTable({
+            startY: 40,
+            head: [['Date', 'Type', 'Amount', 'Status', 'Method', 'Balance']],
+            body: allTransactions.map(t => [
+                moment(t.date).format('DD MMM YYYY'),
+                t.type,
+                `KES ${t.amount.toLocaleString()}`,
+                t.status,
+                t.method,
+                `KES ${t.balance.toLocaleString()}`
+            ])
+        });
+        
+        doc.save(`loan_history_${loan.reference_number}.pdf`);
+    }
+    
+    // Initialize with first loan
+    const loanSelector = document.getElementById('loanSelector');
+    if (loanSelector && loanSelector.value) {
+        currentLoanId = loanSelector.value;
+        updateChart(currentLoanId);
+        updatePaymentHistory(currentLoanId);
+    }
+    
+    // Event Listeners
+    loanSelector.addEventListener('change', function() {
+        currentLoanId = this.value;
+        currentPage = 1;
+        updateChart(currentLoanId);
+        updatePaymentHistory(currentLoanId);
+    });
+    
+    document.getElementById('prevPage').addEventListener('click', function() {
+        if (currentPage > 1) {
+            currentPage--;
+            updatePaymentHistory(currentLoanId);
+        }
+    });
+    
+    document.getElementById('nextPage').addEventListener('click', function() {
+        currentPage++;
+        updatePaymentHistory(currentLoanId);
+    });
+    
+    document.getElementById('exportCSV').addEventListener('click', function() {
+        exportToCSV(currentLoanId);
+    });
+    
+    document.getElementById('exportPDF').addEventListener('click', function() {
+        exportToPDF(currentLoanId);
+    });
+    
+    // Add modal close handler
+    document.getElementById('closeModal').addEventListener('click', function() {
+        document.getElementById('transactionModal').classList.add('hidden');
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('transactionModal');
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+});
+</script>
+{% endblock %}

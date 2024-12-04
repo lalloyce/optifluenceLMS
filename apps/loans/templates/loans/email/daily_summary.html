@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .summary { background: #f8f9fa; padding: 20px; margin: 20px 0; }
+        .stats { display: flex; justify-content: space-between; margin: 20px 0; }
+        .stat-box { background: white; padding: 15px; border-radius: 5px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: bold; }
+        .critical { color: #dc3545; }
+        .high { color: #fd7e14; }
+        .medium { color: #ffc107; }
+        .button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Daily Risk Alerts Summary</h1>
+
+    <div class="summary">
+        <div class="stats">
+            <div class="stat-box">
+                <h3>Critical Alerts</h3>
+                <div class="stat-number critical">{{ summary.by_severity.CRITICAL|default:0 }}</div>
+            </div>
+            <div class="stat-box">
+                <h3>High Alerts</h3>
+                <div class="stat-number high">{{ summary.by_severity.HIGH|default:0 }}</div>
+            </div>
+            <div class="stat-box">
+                <h3>Medium Alerts</h3>
+                <div class="stat-number medium">{{ summary.by_severity.MEDIUM|default:0 }}</div>
+            </div>
+        </div>
+
+        <h3>Alert Types Breakdown:</h3>
+        <ul>
+            {% for type, count in summary.by_type.items %}
+            <li><strong>{{ type|title }}:</strong> {{ count }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Total Active Alerts: {{ summary.total_active }}</h3>
+    </div>
+
+    <p>
+        <a href="{{ dashboard_url }}" class="button">View Full Dashboard</a>
+    </p>
+
+    <p><small>This is an automated daily summary. Please do not reply to this email.</small></p>
+</body>
+</html>

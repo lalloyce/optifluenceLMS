@@ -1,0 +1,119 @@
+/* Loan Detail Styles */
+
+/* Progress Section */
+.progress-label {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.amount-large {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.progress {
+    height: 8px;
+    margin: 10px 0;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    background-color: #28a745;
+    transition: width 0.6s ease;
+}
+
+/* Transaction Table */
+.table th {
+    border-top: none;
+    background-color: #f8f9fa;
+}
+
+.transaction-badge {
+    font-size: 0.85em;
+    padding: 5px 10px;
+}
+
+/* Cards */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Next Payment Card */
+.card.next-payment {
+    border-left: 4px solid #007bff;
+}
+
+.overdue-warning {
+    color: #dc3545;
+    font-size: 0.9em;
+}
+
+/* Document List */
+.document-list .list-group-item {
+    transition: background-color 0.2s ease;
+}
+
+.document-list .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Payment Methods */
+.payment-method {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    margin-bottom: 10px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .amount-large {
+        font-size: 20px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Status Badges */
+.badge {
+    padding: 0.5em 0.75em;
+    font-weight: 500;
+}
+
+/* Action Buttons */
+.btn-action {
+    min-width: 120px;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.alert-danger {
+    background-color: #fff5f5;
+    color: #dc3545;
+}
+
+/* Icons */
+.fas {
+    margin-right: 5px;
+}

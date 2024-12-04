@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Process Repayment - {{ loan.reference_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .balance-card {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .amount-large {
+        font-size: 24px;
+        font-weight: bold;
+        color: #28a745;
+    }
+    .penalty-amount {
+        color: #dc3545;
+    }
+    .schedule-table th {
+        background-color: #f8f9fa;
+    }
+    .overdue {
+        color: #dc3545;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Process Repayment</h2>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Reference:</strong> {{ loan.reference_number }}</p>
+                            <p><strong>Customer:</strong> {{ loan.customer.full_name }}</p>
+                            <p><strong>Amount:</strong> {{ loan.amount|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> {{ loan.get_status_display }}</p>
+                            <p><strong>Term:</strong> {{ loan.term_months }} months</p>
+                            <p><strong>Interest Rate:</strong> {{ loan.interest_rate }}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="balance-card">
+                <h5>Current Balance</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <p class="mb-1">Principal & Interest</p>
+                        <p class="amount-large">{{ form.balance_info.principal_remaining|floatformat:2 }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-1">Penalties</p>
+                        <p class="amount-large penalty-amount">{{ form.balance_info.penalties|floatformat:2 }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-1">Total Due</p>
+                        <p class="amount-large">{{ form.balance_info.total_balance|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" id="repaymentForm">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="btn btn-primary">Process Payment</button>
+                <a href="{% url 'loans:loan_detail' loan.id %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                        <div class="list-group">
+                            {% for transaction in recent_transactions %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ transaction.get_transaction_type_display }}</h6>
+                                    <small>{{ transaction.created_at|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-1">Amount: {{ transaction.amount|floatformat:2 }}</p>
+                                <small>Status: {{ transaction.get_status_display }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent transactions</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Repayment Schedule</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Due Date</th>
+                                    <th>Principal</th>
+                                    <th>Interest</th>
+                                    <th>Total</th>
+                                    <th>Paid</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in schedules %}
+                                <tr {% if schedule.is_overdue %}class="table-danger"{% endif %}>
+                                    <td>{{ schedule.installment_number }}</td>
+                                    <td>{{ schedule.due_date|date:"M d, Y" }}</td>
+                                    <td>{{ schedule.principal_amount|floatformat:2 }}</td>
+                                    <td>{{ schedule.interest_amount|floatformat:2 }}</td>
+                                    <td>{{ schedule.total_amount|floatformat:2 }}</td>
+                                    <td>{{ schedule.paid_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge {% if schedule.status == 'PAID' %}bg-success{% elif schedule.status == 'OVERDUE' %}bg-danger{% elif schedule.status == 'PARTIALLY_PAID' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                            {{ schedule.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('repaymentForm');
+    const amountInput = form.querySelector('input[name="amount"]');
+    const maxAmount = parseFloat(amountInput.getAttribute('data-balance'));
+    
+    // Format amount with 2 decimal places
+    amountInput.addEventListener('blur', function() {
+        if (this.value) {
+            this.value = parseFloat(this.value).toFixed(2);
+        }
+    });
+    
+    // Validate amount doesn't exceed balance
+    form.addEventListener('submit', function(e) {
+        const amount = parseFloat(amountInput.value);
+        if (amount > maxAmount) {
+            e.preventDefault();
+            alert('Payment amount cannot exceed the total balance.');
+        }
+    });
+});
+</script>
+{% endblock %}

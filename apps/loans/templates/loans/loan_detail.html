@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Loan Details - {{ loan.reference_number }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'loans/css/loan-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" data-loan-id="{{ loan.id }}">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Loan Details</h2>
+        <div class="btn-group">
+            {% if loan.status == 'DISBURSED' %}
+                <a href="{% url 'loans:repayment_create' loan.id %}" class="btn btn-primary">
+                    <i class="fas fa-money-bill-wave"></i> Make Payment
+                </a>
+            {% endif %}
+            <a href="{% url 'loans:repayment_schedule' loan.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-calendar-alt"></i> View Schedule
+            </a>
+            <a href="{% url 'loans:repayment_transactions' loan.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-history"></i> Transaction History
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Loan Information -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Reference Number:</strong> {{ loan.reference_number }}</p>
+                            <p><strong>Customer:</strong> {{ loan.customer.full_name }}</p>
+                            <p><strong>Amount:</strong> {{ loan.amount|floatformat:2 }}</p>
+                            <p><strong>Interest Rate:</strong> {{ loan.interest_rate }}%</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> 
+                                <span class="badge {% if loan.status == 'DISBURSED' %}bg-success{% elif loan.status == 'COMPLETED' %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ loan.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Term:</strong> {{ loan.term_months }} months</p>
+                            <p><strong>Disbursement Date:</strong> {{ loan.disbursement_date|date:"M d, Y" }}</p>
+                            <p><strong>End Date:</strong> {{ loan.end_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repayment Progress -->
+            {% if loan.status == 'DISBURSED' %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Repayment Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="progress-label">Principal & Interest</div>
+                            <div class="amount-large" id="principalRemaining">
+                                {{ balance.principal_remaining|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="progress-label">Current Penalties</div>
+                            <div class="amount-large text-danger" id="currentPenalties">
+                                {{ balance.penalties|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="progress-label">Total Balance</div>
+                            <div class="amount-large" id="totalBalance">
+                                {{ balance.total_balance|floatformat:2 }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ balance.payment_progress }}%"
+                             aria-valuenow="{{ balance.payment_progress }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ balance.payment_progress }}% paid</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Transactions -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Transactions</h5>
+                    <a href="{% url 'loans:repayment_transactions' loan.id %}" class="btn btn-sm btn-link">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in recent_transactions %}
+                                    <tr>
+                                        <td>{{ transaction.created_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            <span class="badge {% if transaction.transaction_type == 'REPAYMENT' %}bg-success{% elif transaction.transaction_type == 'PENALTY' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                {{ transaction.get_transaction_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ transaction.amount|floatformat:2 }}</td>
+                                        <td>{{ transaction.get_status_display }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No transactions found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Next Payment -->
+            {% if loan.status == 'DISBURSED' and next_payment %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Next Payment Due</h5>
+                </div>
+                <div class="card-body">
+                    <h3 class="mb-3">{{ next_payment.total_amount|floatformat:2 }}</h3>
+                    <p class="mb-2">
+                        <strong>Due Date:</strong> {{ next_payment.due_date|date:"M d, Y" }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Installment:</strong> #{{ next_payment.installment_number }}
+                    </p>
+                    {% if next_payment.is_overdue %}
+                        <div class="alert alert-danger mb-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Payment is overdue by {{ next_payment.days_overdue }} days
+                        </div>
+                    {% endif %}
+                    <a href="{% url 'loans:repayment_create' loan.id %}?schedule={{ next_payment.id }}" 
+                       class="btn btn-primary btn-block">
+                        Pay Now
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Payment Methods -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Payment Methods</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Bank Transfer</h6>
+                            <p class="mb-1">Account Name: Your Company Name</p>
+                            <p class="mb-0">Account Number: XXXX-XXXX-XXXX</p>
+                        </div>
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Mobile Money</h6>
+                            <p class="mb-0">Phone Number: +XXX XXX XXX XXX</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Documents</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for document in loan.documents.all %}
+                        <a href="{{ document.file.url }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ document.title }}</h6>
+                                <small>{{ document.uploaded_at|date:"M d, Y" }}</small>
+                            </div>
+                            <small class="text-muted">{{ document.get_document_type_display }}</small>
+                        </a>
+                        {% empty %}
+                        <p class="text-muted">No documents available</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'loans/js/repayment.js' %}"></script>
+{% endblock %}

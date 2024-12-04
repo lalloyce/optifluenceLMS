@@ -1,0 +1,19 @@
+DAILY RISK ALERTS SUMMARY
+
+ALERT STATISTICS
+---------------
+Critical Alerts: {{ summary.by_severity.CRITICAL|default:0 }}
+High Alerts: {{ summary.by_severity.HIGH|default:0 }}
+Medium Alerts: {{ summary.by_severity.MEDIUM|default:0 }}
+
+ALERT TYPES BREAKDOWN
+-------------------
+{% for type, count in summary.by_type.items %}
+{{ type|title }}: {{ count }}
+{% endfor %}
+
+Total Active Alerts: {{ summary.total_active }}
+
+View Full Dashboard: {{ dashboard_url }}
+
+This is an automated daily summary. Please do not reply to this email.

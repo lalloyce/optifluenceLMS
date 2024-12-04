@@ -1,0 +1,19 @@
+CRITICAL RISK ALERT
+
+Alert Type: {{ alert_type }}
+Loan Reference: {{ loan.reference_number }}
+Customer: {{ customer.full_name }}
+
+Alert Details:
+{{ alert.message }}
+
+{% if details %}
+Additional Information:
+{% for key, value in details.items %}
+- {{ key|title }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+View in Dashboard: {{ dashboard_url }}
+
+This is an automated message. Please do not reply to this email.

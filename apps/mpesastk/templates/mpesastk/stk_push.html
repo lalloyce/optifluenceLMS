@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2>{{ title }}</h2>
+                </div>
+                <div class="card-body">
+                    <form id="stkPushForm">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   placeholder="254XXXXXXXXX" required>
+                            <div class="form-text">Enter phone number in format: 254XXXXXXXXX</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount (KES)</label>
+                            <input type="number" class="form-control" id="amount" name="amount" 
+                                   min="1" step="1" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reference" class="form-label">Reference</label>
+                            <input type="text" class="form-control" id="reference" name="reference">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-money-bill-wave"></i> Pay with MPesa
+                        </button>
+                    </form>
+                    
+                    <!-- Status Modal -->
+                    <div class="modal fade" id="statusModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Payment Status</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-2">Please check your phone and enter MPesa PIN when prompted</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('stkPushForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Disable submit button
+        submitBtn.disabled = true;
+        
+        // Show status modal
+        statusModal.show();
+        
+        // Get form data
+        const formData = {
+            phone: document.getElementById('phone').value,
+            amount: document.getElementById('amount').value,
+            reference: document.getElementById('reference').value || 'Payment',
+            description: document.getElementById('description').value || 'Payment for services'
+        };
+        
+        try {
+            // Send STK push request
+            const response = await fetch('{% url "mpesastk:stk_push" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                // Query status after 10 seconds
+                setTimeout(async function() {
+                    try {
+                        const statusResponse = await fetch('{% url "mpesastk:query" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `checkout_request_id=${result.data.checkout_request_id}`
+                        });
+                        
+                        const statusResult = await statusResponse.json();
+                        
+                        if (statusResult.status === 'success') {
+                            // Redirect to transactions list
+                            window.location.href = '{% url "mpesastk:transactions" %}';
+                        } else {
+                            alert('Payment processing failed. Please try again.');
+                            statusModal.hide();
+                        }
+                    } catch (error) {
+                        console.error('Error querying status:', error);
+                        alert('Error checking payment status. Please check transactions list.');
+                        statusModal.hide();
+                    }
+                }, 10000);
+            } else {
+                alert(result.message);
+                statusModal.hide();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error processing payment. Please try again.');
+            statusModal.hide();
+        }
+        
+        // Re-enable submit button
+        submitBtn.disabled = false;
+    });
+});
+</script>
+{% endblock %}

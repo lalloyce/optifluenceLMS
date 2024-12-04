@@ -1,0 +1,17 @@
+HIGH RISK LOAN APPLICATION
+
+Loan Reference: {{ loan.reference_number }}
+Customer: {{ customer.full_name }}
+Risk Score: {{ risk_score }}
+
+Risk Factors:
+{% for factor, details in risk_factors.items %}
+* {{ factor|title }}:
+{% for key, value in details.items %}
+  - {{ key|title }}: {{ value }}
+{% endfor %}
+{% endfor %}
+
+Review in Dashboard: {{ dashboard_url }}
+
+This is an automated message. Please do not reply to this email.

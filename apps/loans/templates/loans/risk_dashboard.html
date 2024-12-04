@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Risk Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Risk Management Dashboard</h1>
+        <div class="refresh-control">
+            <button id="refreshButton" class="btn btn-outline-primary">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <div class="form-check form-switch ms-3">
+                <input class="form-check-input" type="checkbox" id="autoRefresh">
+                <label class="form-check-label" for="autoRefresh">Auto-refresh</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Critical Alerts</h5>
+                    <h2 class="card-text" id="criticalCount">{{ alerts_summary.by_severity.CRITICAL|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">High Alerts</h5>
+                    <h2 class="card-text" id="highCount">{{ alerts_summary.by_severity.HIGH|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Active Alerts</h5>
+                    <h2 class="card-text" id="totalCount">{{ alerts_summary.total_active }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">High Risk Loans</h5>
+                    <h2 class="card-text" id="highRiskCount">{{ high_risk_loans|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Critical Alerts -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Critical Alerts</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="criticalAlertsTable">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Loan Ref</th>
+                                    <th>Customer</th>
+                                    <th>Created</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alert in critical_alerts %}
+                                <tr>
+                                    <td>{{ alert.get_alert_type_display }}</td>
+                                    <td>{{ alert.loan.reference_number }}</td>
+                                    <td>{{ alert.loan.customer.full_name }}</td>
+                                    <td>{{ alert.created_at|timesince }} ago</td>
+                                    <td>
+                                        <a href="{% url 'loans:loan_detail' alert.loan.id %}" class="btn btn-sm btn-primary">View</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No critical alerts</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- High Risk Loans -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">High Risk Loans</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="highRiskLoansTable">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Risk Score</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in high_risk_loans %}
+                                <tr>
+                                    <td>{{ loan.reference_number }}</td>
+                                    <td>{{ loan.customer.full_name }}</td>
+                                    <td>{{ loan.amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ loan.risk_score }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'loans:loan_detail' loan.id %}" class="btn btn-sm btn-primary">Review</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No high risk loans</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Trends Chart -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Alert Trends (Last 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="alertTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize alert trends chart
+    const ctx = document.getElementById('alertTrendsChart').getContext('2d');
+    const alertTrendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ alert_trends|safe }},
+            datasets: [
+                {
+                    label: 'Critical',
+                    borderColor: 'rgb(255, 99, 132)',
+                    data: {{ critical_trend|safe }},
+                },
+                {
+                    label: 'High',
+                    borderColor: 'rgb(255, 205, 86)',
+                    data: {{ high_trend|safe }},
+                },
+                {
+                    label: 'Medium',
+                    borderColor: 'rgb(54, 162, 235)',
+                    data: {{ medium_trend|safe }},
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Dashboard refresh functionality
+    const refreshDashboard = async () => {
+        try {
+            const response = await fetch('{% url "loans:risk_dashboard_data" %}');
+            const data = await response.json();
+            
+            // Update summary cards
+            document.getElementById('criticalCount').textContent = data.alerts_summary.by_severity.CRITICAL || 0;
+            document.getElementById('highCount').textContent = data.alerts_summary.by_severity.HIGH || 0;
+            document.getElementById('totalCount').textContent = data.alerts_summary.total_active;
+            document.getElementById('highRiskCount').textContent = data.high_risk_loans.length;
+            
+            // Update critical alerts table
+            const criticalTableBody = document.querySelector('#criticalAlertsTable tbody');
+            criticalTableBody.innerHTML = data.critical_alerts.map(alert => `
+                <tr>
+                    <td>${alert.type}</td>
+                    <td>${alert.loan_ref}</td>
+                    <td>${alert.customer}</td>
+                    <td>${timeSince(new Date(alert.created_at))} ago</td>
+                    <td>
+                        <a href="/loans/${alert.id}/" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="5" class="text-center">No critical alerts</td></tr>';
+            
+            // Update high risk loans table
+            const highRiskTableBody = document.querySelector('#highRiskLoansTable tbody');
+            highRiskTableBody.innerHTML = data.high_risk_loans.map(loan => `
+                <tr>
+                    <td>${loan.reference}</td>
+                    <td>${loan.customer}</td>
+                    <td>${loan.amount.toFixed(2)}</td>
+                    <td><span class="badge bg-danger">${loan.risk_score}</span></td>
+                    <td>
+                        <a href="/loans/${loan.id}/" class="btn btn-sm btn-primary">Review</a>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="5" class="text-center">No high risk loans</td></tr>';
+            
+        } catch (error) {
+            console.error('Error refreshing dashboard:', error);
+        }
+    };
+
+    // Time since helper function
+    function timeSince(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        let interval = seconds / 31536000;
+        
+        if (interval > 1) return Math.floor(interval) + " years";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " months";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " days";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " hours";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " minutes";
+        return Math.floor(seconds) + " seconds";
+    }
+
+    // Set up refresh controls
+    const refreshButton = document.getElementById('refreshButton');
+    const autoRefreshToggle = document.getElementById('autoRefresh');
+    let refreshInterval;
+
+    refreshButton.addEventListener('click', refreshDashboard);
+
+    autoRefreshToggle.addEventListener('change', function() {
+        if (this.checked) {
+            refreshInterval = setInterval(refreshDashboard, 30000); // Refresh every 30 seconds
+        } else {
+            clearInterval(refreshInterval);
+        }
+    });
+</script>
+{% endblock %}

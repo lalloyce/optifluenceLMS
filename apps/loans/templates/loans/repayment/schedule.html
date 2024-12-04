@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Repayment Schedule - {{ loan.reference_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .schedule-header {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .status-badge {
+        font-size: 0.9em;
+        padding: 5px 10px;
+    }
+    .amount-cell {
+        text-align: right;
+    }
+    .penalty-warning {
+        color: #dc3545;
+        font-size: 0.9em;
+    }
+    .progress {
+        height: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="schedule-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Repayment Schedule</h2>
+                <p class="mb-1"><strong>Loan Reference:</strong> {{ loan.reference_number }}</p>
+                <p class="mb-1"><strong>Customer:</strong> {{ loan.customer.full_name }}</p>
+                <p><strong>Status:</strong> {{ loan.get_status_display }}</p>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Loan Balance</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <p class="mb-1">Principal & Interest:</p>
+                                <h4>{{ balance.principal_remaining|floatformat:2 }}</h4>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-1">Total with Penalties:</p>
+                                <h4>{{ balance.total_balance|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        <div class="progress mt-3">
+                            <div class="progress-bar" role="progressbar" 
+                                style="width: {{ balance.payment_progress }}%"
+                                aria-valuenow="{{ balance.payment_progress }}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                        <small class="text-muted">{{ balance.payment_progress }}% paid</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Due Date</th>
+                            <th class="amount-cell">Principal</th>
+                            <th class="amount-cell">Interest</th>
+                            <th class="amount-cell">Total Due</th>
+                            <th class="amount-cell">Paid Amount</th>
+                            <th class="amount-cell">Penalty</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in schedules %}
+                        <tr {% if schedule.is_overdue %}class="table-danger"{% endif %}>
+                            <td>{{ schedule.installment_number }}</td>
+                            <td>{{ schedule.due_date|date:"M d, Y" }}</td>
+                            <td class="amount-cell">{{ schedule.principal_amount|floatformat:2 }}</td>
+                            <td class="amount-cell">{{ schedule.interest_amount|floatformat:2 }}</td>
+                            <td class="amount-cell">{{ schedule.total_amount|floatformat:2 }}</td>
+                            <td class="amount-cell">{{ schedule.paid_amount|floatformat:2 }}</td>
+                            <td class="amount-cell">
+                                {% if schedule.current_penalty %}
+                                    {{ schedule.current_penalty|floatformat:2 }}
+                                    <div class="penalty-warning">
+                                        <small>As of {{ now|date:"M d, Y" }}</small>
+                                    </div>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge status-badge {% if schedule.status == 'PAID' %}bg-success{% elif schedule.status == 'OVERDUE' %}bg-danger{% elif schedule.status == 'PARTIALLY_PAID' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ schedule.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if schedule.status != 'PAID' %}
+                                    <div class="btn-group">
+                                        <a href="{% url 'loans:repayment_create' loan.id %}?schedule={{ schedule.id }}" 
+                                           class="btn btn-sm btn-primary">
+                                            Pay
+                                        </a>
+                                        {% if schedule.current_penalty %}
+                                            <a href="{% url 'loans:waive_penalty' schedule.id %}" 
+                                               class="btn btn-sm btn-outline-secondary">
+                                                Waive Penalty
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Payment Instructions</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <i class="fas fa-info-circle text-primary"></i>
+                            Payments are due on the specified due dates
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Late payments will incur penalties
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-clock text-info"></i>
+                            Payments are processed during business hours
+                        </li>
+                        <li>
+                            <i class="fas fa-question-circle text-success"></i>
+                            Contact support for payment-related queries
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Payment Methods</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Bank Transfer</h6>
+                            <p class="mb-1">Account Name: Your Company Name</p>
+                            <p class="mb-0">Account Number: XXXX-XXXX-XXXX</p>
+                        </div>
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Mobile Money</h6>
+                            <p class="mb-0">Phone Number: +XXX XXX XXX XXX</p>
+                        </div>
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Cash Payment</h6>
+                            <p class="mb-0">Visit our office during business hours</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
