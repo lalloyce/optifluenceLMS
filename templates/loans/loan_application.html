@@ -1,0 +1,229 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}New Loan Application - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">New Loan Application</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Loan Product Selection -->
+                        <div class="mb-3">
+                            <label for="{{ form.loan_product.id_for_label }}" class="form-label">Loan Product</label>
+                            <select name="{{ form.loan_product.name }}" id="{{ form.loan_product.id_for_label }}" 
+                                    class="form-select {% if form.loan_product.errors %}is-invalid{% endif %}" required>
+                                <option value="">Select a loan product</option>
+                                {% for product in loan_products %}
+                                <option value="{{ product.id }}" 
+                                        data-min-amount="{{ product.minimum_amount }}"
+                                        data-max-amount="{{ product.maximum_amount }}"
+                                        data-min-term="{{ product.minimum_term }}"
+                                        data-max-term="{{ product.maximum_term }}"
+                                        data-interest-rate="{{ product.interest_rate }}"
+                                        data-processing-fee="{{ product.processing_fee }}">
+                                    {{ product.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.loan_product.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.loan_product.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text" id="productDetails"></div>
+                        </div>
+                        
+                        <!-- Customer Selection -->
+                        <div class="mb-3">
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            <select name="{{ form.customer.name }}" id="{{ form.customer.id_for_label }}" 
+                                    class="form-select {% if form.customer.errors %}is-invalid{% endif %}" required>
+                                <option value="">Select a customer</option>
+                                {% for customer in form.customer.field.queryset %}
+                                <option value="{{ customer.id }}">{{ customer.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.customer.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.customer.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Loan Amount -->
+                        <div class="mb-3">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">Loan Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="{{ form.amount.name }}" 
+                                       id="{{ form.amount.id_for_label }}" 
+                                       class="form-control {% if form.amount.errors %}is-invalid{% endif %}"
+                                       required>
+                            </div>
+                            {% if form.amount.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.amount.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Loan Term -->
+                        <div class="mb-3">
+                            <label for="{{ form.term_months.id_for_label }}" class="form-label">Loan Term (Months)</label>
+                            <input type="number" name="{{ form.term_months.name }}" 
+                                   id="{{ form.term_months.id_for_label }}" 
+                                   class="form-control {% if form.term_months.errors %}is-invalid{% endif %}"
+                                   required>
+                            {% if form.term_months.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.term_months.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Loan Purpose -->
+                        <div class="mb-3">
+                            <label for="{{ form.purpose.id_for_label }}" class="form-label">Loan Purpose</label>
+                            <textarea name="{{ form.purpose.name }}" id="{{ form.purpose.id_for_label }}" 
+                                      class="form-control {% if form.purpose.errors %}is-invalid{% endif %}"
+                                      rows="3" required></textarea>
+                            {% if form.purpose.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.purpose.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Submit Application</button>
+                            <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Loan Calculator Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Calculator</h5>
+                </div>
+                <div class="card-body">
+                    <div id="loanCalculator">
+                        <div class="mb-3">
+                            <label class="form-label">Monthly Payment</label>
+                            <h3 id="monthlyPayment" class="text-primary">$0.00</h3>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Total Payment</label>
+                            <h4 id="totalPayment" class="text-secondary">$0.00</h4>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Total Interest</label>
+                            <h4 id="totalInterest" class="text-info">$0.00</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Help Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">If you need assistance with your loan application, please contact our support team:</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-phone me-2"></i>(254) 723-689992</li>
+                        <li><i class="fas fa-envelope me-2"></i>support@optifluence.com</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loanProductSelect = document.getElementById('{{ form.loan_product.id_for_label }}');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const termInput = document.getElementById('{{ form.term_months.id_for_label }}');
+    const productDetails = document.getElementById('productDetails');
+    
+    // Update product details when selection changes
+    loanProductSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            const details = `
+                Interest Rate: ${selectedOption.dataset.interestRate}%<br>
+                Amount Range: $${selectedOption.dataset.minAmount} - $${selectedOption.dataset.maxAmount}<br>
+                Term Range: ${selectedOption.dataset.minTerm} - ${selectedOption.dataset.maxTerm} months<br>
+                Processing Fee: ${selectedOption.dataset.processingFee}%
+            `;
+            productDetails.innerHTML = details;
+            
+            // Set min/max values for amount and term
+            amountInput.min = selectedOption.dataset.minAmount;
+            amountInput.max = selectedOption.dataset.maxAmount;
+            termInput.min = selectedOption.dataset.minTerm;
+            termInput.max = selectedOption.dataset.maxTerm;
+        } else {
+            productDetails.innerHTML = '';
+        }
+    });
+    
+    // Calculate loan details when inputs change
+    function calculateLoan() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const term = parseInt(termInput.value) || 0;
+        const selectedOption = loanProductSelect.options[loanProductSelect.selectedIndex];
+        
+        if (amount && term && selectedOption.value) {
+            const interestRate = parseFloat(selectedOption.dataset.interestRate);
+            const monthlyRate = interestRate / (12 * 100);
+            const monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+            const totalPayment = monthlyPayment * term;
+            const totalInterest = totalPayment - amount;
+            
+            document.getElementById('monthlyPayment').textContent = `$${monthlyPayment.toFixed(2)}`;
+            document.getElementById('totalPayment').textContent = `$${totalPayment.toFixed(2)}`;
+            document.getElementById('totalInterest').textContent = `$${totalInterest.toFixed(2)}`;
+        }
+    }
+    
+    amountInput.addEventListener('input', calculateLoan);
+    termInput.addEventListener('input', calculateLoan);
+    loanProductSelect.addEventListener('change', calculateLoan);
+});
+</script>
+{% endblock %}
+{% endblock %}

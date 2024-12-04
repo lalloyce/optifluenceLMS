@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Confirm Delete</h5>
+                </div>
+                <div class="card-body">
+                    <p class="alert alert-danger">
+                        Are you sure you want to delete the customer "{{ customer.full_name }}"? 
+                        This action cannot be undone.
+                    </p>
+                    
+                    <div class="customer-info mb-4">
+                        <h6>Customer Details:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Name:</strong> {{ customer.full_name }}</li>
+                            <li><strong>Phone:</strong> {{ customer.phone_number }}</li>
+                            {% if customer.email %}
+                            <li><strong>Email:</strong> {{ customer.email }}</li>
+                            {% endif %}
+                            <li><strong>Type:</strong> {% if customer.is_business %}Business{% else %}Individual{% endif %}</li>
+                        </ul>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'web_customers:customers.detail' customer.pk %}" class="btn btn-secondary me-2">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt me-2"></i>Delete Customer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

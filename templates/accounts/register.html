@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register - Optifluence Limited{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2>Create Account</h2>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <form method="post" action="{% url 'accounts:register' %}" class="auth-form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.first_name.id_for_label }}">First Name</label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}">Email Address</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.password1.id_for_label }}">Password</label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+                <div class="invalid-feedback d-block">{{ form.password1.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.password2.id_for_label }}">Confirm Password</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div class="invalid-feedback d-block">{{ form.password2.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <button type="submit">Create Account</button>
+        </div>
+    </form>
+    
+    <div class="auth-links">
+        <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign In</a></p>
+    </div>
+</div>
+{% endblock %}

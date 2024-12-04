@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Loan Statement - {{ loan.loan_id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h4 class="mb-1">Loan Statement</h4>
+                    <p class="text-muted mb-0">{{ loan.loan_id }}</p>
+                </div>
+                <div class="text-end">
+                    <button class="btn btn-outline-primary" onclick="window.print()">
+                        <i class="fas fa-print me-2"></i>Print Statement
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loan Summary -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Customer Information</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <td class="text-muted">Name</td>
+                            <td>{{ loan.customer.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Customer ID</td>
+                            <td>{{ loan.customer.id }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Email</td>
+                            <td>{{ loan.customer.email }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="mb-3">Loan Details</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <td class="text-muted">Principal Amount</td>
+                            <td>{{ loan.amount }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Interest Rate</td>
+                            <td>{{ loan.interest_rate }}%</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Term</td>
+                            <td>{{ loan.term }} months</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status</td>
+                            <td>
+                                <span class="badge {% if loan.status == 'ACTIVE' %}bg-primary
+                                                 {% elif loan.status == 'COMPLETED' %}bg-success
+                                                 {% elif loan.status == 'OVERDUE' %}bg-danger
+                                                 {% endif %}">
+                                    {{ loan.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payment Schedule -->
+            <h5 class="mb-3">Payment Schedule</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Payment Date</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Total Payment</th>
+                            <th>Remaining Balance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in loan.payment_schedule.all %}
+                        <tr>
+                            <td>{{ payment.due_date }}</td>
+                            <td>{{ payment.principal_amount }}</td>
+                            <td>{{ payment.interest_amount }}</td>
+                            <td>{{ payment.total_amount }}</td>
+                            <td>{{ payment.remaining_balance }}</td>
+                            <td>
+                                <span class="badge {% if payment.status == 'PAID' %}bg-success
+                                                 {% elif payment.status == 'PENDING' %}bg-warning
+                                                 {% elif payment.status == 'OVERDUE' %}bg-danger
+                                                 {% endif %}">
+                                    {{ payment.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td><strong>Total</strong></td>
+                            <td><strong>{{ loan.total_principal }}</strong></td>
+                            <td><strong>{{ loan.total_interest }}</strong></td>
+                            <td><strong>{{ loan.total_amount }}</strong></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Print styles */
+@media print {
+    .btn {
+        display: none !important;
+    }
+
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background-color: transparent !important;
+    }
+
+    .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .table td, .table th {
+        border: 1px solid #dee2e6 !important;
+        padding: 0.5rem !important;
+    }
+
+    .table thead th {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact !important;
+    }
+
+    .table-light {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact !important;
+    }
+
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+
+    body {
+        min-width: initial !important;
+    }
+}
+</style>
+{% endblock %}

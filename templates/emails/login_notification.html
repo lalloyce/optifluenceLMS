@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Login Alert</h2>
+        </div>
+        <div class="content">
+            <p>Hello {{ user.first_name }},</p>
+            <p>We detected a new login to your OptifluenceLMS account on {{ timestamp }}.</p>
+            
+            <h3>Login Details:</h3>
+            <ul>
+                <li>Time: {{ timestamp }}</li>
+                <li>IP Address: {{ ip_address }}</li>
+                <li>Device: {{ user_agent }}</li>
+            </ul>
+
+            <p>If this was you, you can safely ignore this email.</p>
+            <p>If you did not log in at this time, please secure your account immediately:</p>
+            
+            <a href="{{ reset_password_url }}" class="button">Reset Your Password</a>
+
+            <p>Or contact our support team at {{ support_email }} for assistance.</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message, please do not reply directly to this email.</p>
+            <p>OptifluenceLMS - Secure Login Monitoring</p>
+        </div>
+    </div>
+</body>
+</html>

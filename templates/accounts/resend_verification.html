@@ -1,0 +1,42 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Resend Verification Email - Optifluence Limited{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="auth-card">
+                    <h2 class="text-center mb-4">Resend Verification Email</h2>
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Resend Verification Email</button>
+                        </div>
+                    </form>
+
+                    <div class="mt-4 text-center">
+                        <p>Already verified? <a href="{% url 'accounts:login' %}">Login here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

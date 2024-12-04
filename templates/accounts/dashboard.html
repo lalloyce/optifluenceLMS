@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Dashboard - OptifluenceLMS{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+            <p class="text-muted">Welcome back, {{ request.user.get_full_name }}</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <!-- Time Period Filter -->
+            <div class="me-3">
+                <select id="timeFilter" class="form-select">
+                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 Days</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 Days</option>
+                    <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 Days</option>
+                    <option value="180" {% if days == 180 %}selected{% endif %}>Last 6 Months</option>
+                    <option value="365" {% if days == 365 %}selected{% endif %}>Last Year</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            <div id="dateRange" class="me-3" style="display: none;">
+                <input type="text" id="dateRangePicker" class="form-control" />
+            </div>
+            <!-- Action Buttons -->
+            <div class="btn-group">
+                <a href="{% url 'web_loans:loans.create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus-circle me-2"></i>New Loan
+                </a>
+                <a href="{% url 'web_customers:customers.create' %}" class="btn btn-success">
+                    <i class="fas fa-user-plus me-2"></i>New Customer
+                </a>
+                <a href="{% url 'web_transactions:transactions.create' %}" class="btn btn-info">
+                    <i class="fas fa-money-bill-wave me-2"></i>Record Payment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <!-- Total Portfolio Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Portfolio</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ loan_stats.total_portfolio|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Loans Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Active Loans</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ loan_stats.active_loans|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Period Disbursements Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Period Disbursements</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ loan_stats.total_disbursed|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Defaulted Loans Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Defaulted Loans</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ loan_stats.defaulted_loans|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Monthly Disbursement Chart -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Disbursement Trend</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="monthlyDisbursementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Borrowers -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Borrowers</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Loans</th>
+                                    <th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for borrower in top_borrowers %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'web_customers:customers.detail' borrower.id %}">
+                                            {{ borrower.first_name }} {{ borrower.last_name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ borrower.loan_count }}</td>
+                                    <td>{{ borrower.total_amount|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Row -->
+    <div class="row">
+        <!-- Recent Loans -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Loans</h6>
+                    <a href="{% url 'web_loans:loans.list' %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in recent_loans %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'web_customers:customers.detail' loan.customer.id %}">
+                                            {{ loan.customer.first_name }} {{ loan.customer.last_name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ loan.amount|floatformat:2|intcomma }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ loan.get_status_color }}">
+                                            {{ loan.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ loan.application_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'web_loans:loans.detail' loan.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
+                    <a href="{% url 'web_transactions:transactions.list' %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for transaction in recent_transactions %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ transaction.get_transaction_type_display }}</h6>
+                                <small>{{ transaction.transaction_date|date:"M d" }}</small>
+                            </div>
+                            <p class="mb-1">{{ transaction.amount|floatformat:2|intcomma }}</p>
+                            <small class="text-muted">
+                                <a href="{% url 'web_customers:customers.detail' transaction.loan.customer.id %}">
+                                    {{ transaction.loan.customer.first_name }} {{ transaction.loan.customer.last_name }}
+                                </a>
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script>
+    // Monthly Disbursement Chart
+    const monthlyData = {
+        labels: [{% for item in monthly_disbursements %}'{{ item.month|date:"M Y" }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Disbursement Amount',
+            data: [{% for item in monthly_disbursements %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+        }]
+    };
+
+    new Chart(document.getElementById('monthlyDisbursementChart'), {
+        type: 'line',
+        data: monthlyData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat().format(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Time Period Filter
+    const timeFilter = document.getElementById('timeFilter');
+    const dateRange = document.getElementById('dateRange');
+
+    // Initialize date range picker
+    $('#dateRangePicker').daterangepicker({
+        startDate: moment('{{ start_date|date:"Y-m-d" }}'),
+        endDate: moment('{{ end_date|date:"Y-m-d" }}'),
+        maxDate: moment(),
+        opens: 'left',
+        autoApply: true,
+        locale: {
+            format: 'YYYY-MM-DD'
+        }
+    });
+
+    // Handle time filter changes
+    timeFilter.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            dateRange.style.display = 'block';
+        } else {
+            dateRange.style.display = 'none';
+            window.location.href = `?period=${this.value}`;
+        }
+    });
+
+    // Handle date range selection
+    $('#dateRangePicker').on('apply.daterangepicker', function(ev, picker) {
+        window.location.href = `?period=custom&start_date=${picker.startDate.format('YYYY-MM-DD')}&end_date=${picker.endDate.format('YYYY-MM-DD')}`;
+    });
+
+    // Show date range picker if custom period is selected
+    if (timeFilter.value === 'custom') {
+        dateRange.style.display = 'block';
+    }
+</script>
+{% endblock %}

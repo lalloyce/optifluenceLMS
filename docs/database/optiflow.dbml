@@ -1,0 +1,149 @@
+// OptifluenceLMS Database Schema
+
+// User Management
+Table users {
+  id uuid [pk]
+  email varchar(255) [unique, not null]
+  password varchar(255) [not null]
+  is_active boolean [default: true]
+  is_staff boolean [default: false]
+  is_superuser boolean [default: false]
+  date_joined timestamp [default: `CURRENT_TIMESTAMP`]
+  last_login timestamp [null]
+  first_name varchar(150) [null]
+  last_name varchar(150) [null]
+}
+
+Table user_profiles {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  phone_number varchar(15) [null]
+  address text [null]
+  profile_picture varchar(255) [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// Customer Management
+Table customers {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  national_id varchar(20) [unique]
+  occupation varchar(255)
+  business_name varchar(255) [null]
+  business_type varchar(100) [null]
+  monthly_income decimal(15,2)
+  credit_score int [null]
+  status varchar(50) [default: 'active']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Table customer_documents {
+  id uuid [pk]
+  customer_id uuid [ref: > customers.id]
+  document_type varchar(100)
+  document_number varchar(100)
+  file_path varchar(255)
+  verified boolean [default: false]
+  uploaded_at timestamp [default: `CURRENT_TIMESTAMP`]
+  verified_at timestamp [null]
+  verified_by uuid [ref: > users.id, null]
+}
+
+// Loan Management
+Table loan_products {
+  id uuid [pk]
+  name varchar(255)
+  description text
+  interest_rate decimal(5,2)
+  term_min int
+  term_max int
+  amount_min decimal(15,2)
+  amount_max decimal(15,2)
+  late_fee_percentage decimal(5,2)
+  processing_fee_percentage decimal(5,2)
+  status varchar(50) [default: 'active']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Table loans {
+  id uuid [pk]
+  customer_id uuid [ref: > customers.id]
+  product_id uuid [ref: > loan_products.id]
+  loan_number varchar(50) [unique]
+  principal_amount decimal(15,2)
+  interest_rate decimal(5,2)
+  term_months int
+  status varchar(50) [default: 'pending']
+  disbursed_amount decimal(15,2)
+  disbursed_date timestamp [null]
+  first_payment_date date [null]
+  last_payment_date date [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+  approved_by uuid [ref: > users.id, null]
+  approved_at timestamp [null]
+}
+
+Table loan_documents {
+  id uuid [pk]
+  loan_id uuid [ref: > loans.id]
+  document_type varchar(100)
+  file_path varchar(255)
+  uploaded_at timestamp [default: `CURRENT_TIMESTAMP`]
+  verified boolean [default: false]
+  verified_at timestamp [null]
+  verified_by uuid [ref: > users.id, null]
+}
+
+// Transaction Management
+Table transactions {
+  id uuid [pk]
+  loan_id uuid [ref: > loans.id]
+  transaction_type varchar(50)
+  amount decimal(15,2)
+  payment_method varchar(100)
+  reference_number varchar(100)
+  status varchar(50)
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  processed_at timestamp [null]
+  processed_by uuid [ref: > users.id, null]
+}
+
+Table repayment_schedule {
+  id uuid [pk]
+  loan_id uuid [ref: > loans.id]
+  due_date date
+  principal_amount decimal(15,2)
+  interest_amount decimal(15,2)
+  late_fee decimal(15,2) [default: 0]
+  total_amount decimal(15,2)
+  paid_amount decimal(15,2) [default: 0]
+  status varchar(50) [default: 'pending']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// Audit and Logging
+Table audit_logs {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  action varchar(100)
+  table_name varchar(100)
+  record_id uuid
+  old_values jsonb [null]
+  new_values jsonb [null]
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// Indexes
+Indexes {
+  (users.email) [unique]
+  (customers.national_id) [unique]
+  (loans.loan_number) [unique]
+  (transactions.reference_number) [unique]
+}

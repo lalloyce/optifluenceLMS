@@ -1,0 +1,14 @@
+Welcome to OptifluenceLMS!
+
+Hello {{ user.first_name }},
+
+Thank you for registering with OptifluenceLMS. To complete your registration and verify your email address, please click the link below:
+
+{{ verification_url }}
+
+This verification link will expire in 24 hours for security reasons.
+
+If you didn't create an account with OptifluenceLMS, please ignore this email.
+
+Best regards,
+The OptifluenceLMS Team

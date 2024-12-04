@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OptifluenceLMS - Modern Loan Management{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <!-- Top Auth Row -->
+            <div class="w-100 d-none d-lg-flex justify-content-end border-bottom pb-2 mb-2">
+                <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-sm me-2">
+                    Login
+                </a>
+                <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-sm">
+                    Register
+                </a>
+            </div>
+            
+            <!-- Main Navigation Row -->
+            <div class="w-100 d-flex align-items-center">
+                <a class="navbar-brand" href="{% url 'home' %}">
+                    <img src="{% static 'images/logo.png' %}" alt="Optifluence">
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'home' %}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#approach">Our Approach</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#team">Team</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#projects">Projects</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#contact">Contact</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Mobile Auth Buttons -->
+            <div class="w-100 d-lg-none mt-3">
+                <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    Login
+                </a>
+                <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-sm w-100">
+                    Register
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% if messages %}
+            <div class="container mt-4">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-light py-5 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>About Optifluence Limited</h5>
+                    <p class="text-muted">We run strategic experiments with business models to design community-facing interventions that generate invaluable insights for policy and development work.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="useful-links">
+                        <h5>Useful Links</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="#approach">Our Approach</a></li>
+                            <li><a href="#projects">Projects</a></li>
+                            <li><a href="#team">Team</a></li>
+                            <li><a href="#contact">Contact Us</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h5>Contact Us</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-envelope me-2"></i> <a href="mailto:optifluence@gmail.com">optifluence@gmail.com</a></li>
+                        <li><i class="fas fa-phone me-2"></i> 
+                            <a href="tel:+254723689992">(254) 723-689992</a> | 
+                            <a href="tel:+254707692292">(254) 707-692292</a>
+                        </li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i> Menyinkwa, Kisii County, Kenya</li>
+                    </ul>
+                    <div class="footer-social mt-3">
+                        <a href="https://facebook.com/optifluenceke" target="_blank" title="Facebook" class="facebook">
+                            <i class="fa-brands fa-facebook"></i>
+                        </a>
+                        <a href="https://instagram.com/optifluenceke" target="_blank" title="Instagram" class="instagram">
+                            <i class="fa-brands fa-instagram"></i>
+                        </a>
+                        <a href="https://twitter.com/optifluenceke" target="_blank" title="Twitter" class="twitter">
+                            <i class="fa-brands fa-twitter"></i>
+                        </a>
+                        <a href="https://linkedin.com/company/optifluenceke" target="_blank" title="LinkedIn" class="linkedin">
+                            <i class="fa-brands fa-linkedin"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p class="mb-0">&copy; {% now "Y" %} Optifluence Limited. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

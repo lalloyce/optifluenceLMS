@@ -1,0 +1,196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:;">
+    {% csrf_token %}
+    <title>{% block title %}OptifluenceLMS{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Main CSS -->
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">OptifluenceLMS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                {% if user.is_authenticated %}
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'web_customers:customers.list' %}">Customers</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'web_loans:loans.list' %}">Loans</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'web_transactions:transactions.list' %}">Transactions</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'reports' %}">Reports</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user fa-fw"></i> {{ user.get_full_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="fas fa-user-circle fa-fw"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:settings' %}"><i class="fas fa-cog fa-fw"></i> Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt fa-fw"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <main class="py-4">
+        {% if messages %}
+        <div class="container">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% block content %}
+        {% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">&copy; {% now "Y" %} OptifluenceLMS. All rights reserved.</span>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+    
+    {% if user.is_authenticated %}
+    <script>
+        // Session timeout management
+        let warningTimeout = 240000; // Show warning 4 minutes after last activity
+        let logoutTimeout = 300000;  // Logout after 5 minutes of inactivity
+        let warningTimer;
+        let logoutTimer;
+        let warningShown = false;
+        
+        // Function to reset timers
+        function resetTimers() {
+            clearTimeout(warningTimer);
+            clearTimeout(logoutTimer);
+            if (warningShown) {
+                $('#sessionWarningModal').modal('hide');
+                warningShown = false;
+            }
+            warningTimer = setTimeout(showWarning, warningTimeout);
+            logoutTimer = setTimeout(logout, logoutTimeout);
+        }
+        
+        // Function to show warning modal
+        function showWarning() {
+            warningShown = true;
+            $('#sessionWarningModal').modal('show');
+            // Start countdown
+            let countdown = 60;
+            const countdownEl = document.getElementById('sessionCountdown');
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                countdownEl.textContent = countdown;
+            }, 1000);
+        }
+        
+        // Function to logout
+        function logout() {
+            window.location.href = "{% url 'accounts:logout' %}";
+        }
+        
+        // Reset timers on user activity
+        const events = [
+            'mousedown', 'mousemove', 'keypress',
+            'scroll', 'touchstart', 'click', 'keydown'
+        ];
+        
+        events.forEach(function(name) {
+            document.addEventListener(name, resetTimers, true);
+        });
+        
+        // Initial setup
+        resetTimers();
+        
+        // Keep session alive with periodic requests
+        setInterval(function() {
+            if (!warningShown) {
+                fetch("{% url 'accounts:keep_alive' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+            }
+        }, 240000); // Every 4 minutes
+    </script>
+    
+    <!-- Session Warning Modal -->
+    <div class="modal fade" id="sessionWarningModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Session Timeout Warning</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Your session will expire in <span id="sessionCountdown">60</span> seconds due to inactivity.</p>
+                    <p>Click anywhere or press any key to remain logged in.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="resetTimers()">
+                        Keep Me Logged In
+                    </button>
+                    <a href="{% url 'accounts:logout' %}" class="btn btn-secondary">
+                        Logout Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Verify Your OptifluenceLMS Account</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Welcome to OptifluenceLMS!</h2>
+    </div>
+    
+    <p>Hello {{ user.first_name }},</p>
+    
+    <p>Thank you for registering with OptifluenceLMS. To complete your registration and verify your email address, please click the button below:</p>
+    
+    <p style="text-align: center;">
+        <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+    </p>
+    
+    <p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+    <p>{{ verification_url }}</p>
+    
+    <p><strong>Note:</strong> This verification link will expire in 15 minutes for security reasons. If the link expires, you can request a new one by visiting the login page.</p>
+    
+    <div class="footer">
+        <p>If you did not register for an OptifluenceLMS account, please ignore this email.</p>
+        <p>Best regards,<br>The OptifluenceLMS Team</p>
+    </div>
+</body>
+</html>

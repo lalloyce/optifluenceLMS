@@ -1,0 +1,200 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-5 mb-lg-0">
+                <h1>Powering the Future</h1>
+                <p class="lead">
+                    Optifluence is an innovations company that leverages data, design thinking, and technology to discover and deliver what customers need. We run strategic experiments with business models to design community-facing interventions that generate invaluable insights for policy and development work.
+                </p>
+                <div class="d-flex gap-3">
+                    <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#contact">
+                        Get Started Free
+                    </button>
+                    <a href="#approach" class="btn btn-outline-primary btn-lg">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6 d-none d-lg-block hero-image-container">
+                <img src="{% static 'images/hero.jpg' %}" alt="Innovation and Technology" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Our Approach Section -->
+<section id="approach" class="features py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2>Our Approach</h2>
+                <p class="lead">We combine innovation with practical solutions to create lasting impact.</p>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-lg-4 col-md-4 mb-4">
+                <div class="approach-card design-thinking">
+                    <div class="card-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h4>Design Thinking</h4>
+                    <p>Human-centered approach to innovation that draws from the designer's toolkit.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-4 mb-4">
+                <div class="approach-card iterative-feedback">
+                    <div class="card-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h4>Iterative Feedback</h4>
+                    <p>We work with customers in an Agile style to incorporate ongoing input.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-4 mb-4">
+                <div class="approach-card documentation">
+                    <div class="card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h4>Documentation</h4>
+                    <p>We document everything to support further learning and growth.</p>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 col-md-6 mb-4">
+                <div class="approach-card r-and-d">
+                    <div class="card-icon">
+                        <i class="fas fa-flask"></i>
+                    </div>
+                    <h4>R&D/M&E/Product Dev</h4>
+                    <p>We conduct comprehensive research, monitoring, and product development to ensure sustainable solutions. Our approach combines rigorous analysis with practical implementation strategies.</p>
+                </div>
+            </div>
+            <div class="col-lg-6 col-md-6 mb-4">
+                <div class="approach-card partnerships">
+                    <div class="card-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h4>Partnerships/Capital</h4>
+                    <p>We identify and leverage strategic partnerships to raise capital for our initiatives. Our network includes key stakeholders in technology, agriculture, and sustainable development sectors.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Team Section -->
+<section id="team" class="team-section">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2>Our Team</h2>
+                <p class="lead">Meet the innovators behind Optifluence</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="team-card">
+                    <img src="{% static 'images/lawrence.jpg' %}" alt="Lawrence Juma - Founder & CEO of Optifluence">
+                    <h4>Lawrence Juma</h4>
+                    <div class="position">Founder & CEO</div>
+                    <p>Lawrence is based in Western Kenya, with almost a decade of experience in Project Management and Research. Since 2020, he has been the technical advisor for the Toyota Mobility Foundation through the Kisii Smart Community Project, leading country-level research on the adoption and impact of Electric Vehicles in rural smallholder agriculture in Western Kenya. Previously, he consulted for Educate! between 2017 and 2019, leading program design, monitoring and evaluation processes through Design Thinking methodologies. <a href="https://linkedin.com/in/lalloyce" target="_blank"><i class="fab fa-linkedin"></i> Connect on LinkedIn</a></p>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="team-card">
+                    <img src="{% static 'images/juliah.jpg' %}" alt="Juliah Omariba - Co-Founder and COO of Optifluence">
+                    <h4>Juliah Omariba</h4>
+                    <div class="position">Co-Founder and COO</div>
+                    <p>Based in Kisii, Kenya, Juliah is a dynamic professional with proven expertise in optimizing business operations and implementing solutions that drive both social and economic transformation. Since March 2021, she has led the groundbreaking Kisii Smart Community project, leveraging off-grid renewable energy, clean mobility, and technology solutions to improve rural communities' quality of life. She holds a Bachelor's degree in Purchasing & Supplies Management from Jomo Kenyatta University of Agriculture & Technology and is committed to fostering growth through innovative approaches and strategic partnerships. <a href="https://linkedin.com/in/jomariba" target="_blank"><i class="fab fa-linkedin"></i> Connect on LinkedIn</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Latest Project Section -->
+<section id="projects" class="solutions bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2>Our Latest Project in Kenya</h2>
+            <p class="lead text-muted">Making an impact where it matters</p>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="solution-card text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-chart-line fa-3x text-primary"></i>
+                    </div>
+                    <h3 class="mb-3">Small Business Recovery Initiative</h3>
+                    <p class="text-muted">
+                        A 24-month project to evaluate the impact of small, targeted and consistent working capital credit to small-scale businesses on their post-COVID-19 recovery.
+                    </p>
+                    <a href="#contact" class="btn btn-primary mt-3">Learn More About Our Impact</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 mb-4">
+                <h2>Get in Touch</h2>
+                <p class="lead mb-4">We'd love to hear from you.</p>
+                <ul class="list-unstyled">
+                    <li class="mb-3">
+                        <i class="fas fa-envelope me-2"></i>
+                        <a href="mailto:optifluence@gmail.com">optifluence@gmail.com</a>
+                    </li>
+                    <li class="mb-3">
+                        <i class="fas fa-phone me-2"></i>
+                        <a href="tel:+254723689992">(254) 723-689992</a>
+                    </li>
+                    <li>
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        Menyinkwa, Kisii County, Kenya
+                    </li>
+                </ul>
+            </div>
+            <div class="col-lg-5">
+                <div class="contact-form">
+                    <form id="contactForm" method="POST" action="{% url 'accounts:send_email' %}">
+                        {% csrf_token %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Your Email" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="subject" name="subject" placeholder="Subject" required>
+                        </div>
+                        <div class="mb-3">
+                            <textarea class="form-control" id="message" name="message" rows="4" placeholder="Your Message" required></textarea>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Send Message</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
