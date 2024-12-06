@@ -1,11 +1,10 @@
 # Environment variables
-# .env  # Temporarily removed
+.env
 .env.local
 .env.*.local
 .env.development
 .env.test
 .env.production
-.env
 
 # Python
 __pycache__/
@@ -99,12 +98,17 @@ celerybeat.pid
 
 # Project-specific
 /media/
-/static/
 *.dump
 *.sql
 *.sqlite
 /vendor/
-/staticfiles/
+# Collected static files directory (but not source static files)
+/staticfiles/  # Django's collected static files
+/static/admin/  # Admin static files will be collected again
+/static/rest_framework/  # DRF static files will be collected again
+!static/css/  # Keep our source CSS
+!static/js/   # Keep our source JS
+!static/images/  # Keep our images
 
 # Logs
 logs/
