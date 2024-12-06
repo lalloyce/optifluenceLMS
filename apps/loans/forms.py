@@ -3,35 +3,39 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
-from .models import Loan, LoanDocument
+from .models import LoanApplication, LoanProduct
+from apps.customers.models import Customer
 from .services.risk_assessment import LoanRiskAssessment
 from decimal import Decimal
-from .models import Customer
 
 class LoanApplicationForm(forms.ModelForm):
     """Form for loan applications."""
     
     class Meta:
-        model = Loan
+        model = LoanApplication
         fields = [
             'loan_product',
             'customer',
-            'amount',
+            'amount_requested',
             'term_months',
             'purpose',
+            'employment_status',
+            'monthly_income',
+            'other_loans',
         ]
         widgets = {
             'purpose': forms.Textarea(attrs={'rows': 3}),
+            'other_loans': forms.Textarea(attrs={'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.risk_assessment = None
         
-        if self.is_bound and self.data.get('customer') and self.data.get('amount'):
+        if self.is_bound and self.data.get('customer') and self.data.get('amount_requested'):
             try:
                 customer = Customer.objects.get(pk=self.data['customer'])
-                amount = Decimal(self.data['amount'])
+                amount = Decimal(self.data['amount_requested'])
                 self.risk_assessment = LoanRiskAssessment(customer, amount)
                 self.risk_summary = self.risk_assessment.get_risk_assessment_summary()
             except (Customer.DoesNotExist, ValueError):
@@ -40,13 +44,12 @@ class LoanApplicationForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         loan_product = cleaned_data.get('loan_product')
-        amount = cleaned_data.get('amount')
+        amount = cleaned_data.get('amount_requested')
         term_months = cleaned_data.get('term_months')
         customer = cleaned_data.get('customer')
         
         if all([loan_product, amount, term_months, customer]):
             # Perform risk assessment
-            from .services.risk_assessment import LoanRiskAssessment
             risk_assessment = LoanRiskAssessment(customer, amount)
             risk_score = risk_assessment.calculate_risk_score()
             
@@ -94,65 +97,65 @@ class LoanApplicationForm(forms.ModelForm):
         return cleaned_data
     
     def save(self, commit=True):
-        loan = super().save(commit=False)
-        loan_product = loan.loan_product
-        
-        # Set interest rate and processing fee from loan product
-        loan.interest_rate = loan_product.interest_rate
-        loan.processing_fee = (loan_product.processing_fee / 100) * loan.amount
+        application = super().save(commit=False)
+        loan_product = application.loan_product
         
         # Store risk assessment results
         if hasattr(self, 'risk_assessment'):
-            loan.risk_score = self.risk_assessment.score
-            loan.risk_factors = self.risk_assessment.risk_factors
+            application.risk_score = self.risk_assessment.score
+            application.risk_factors = self.risk_assessment.risk_factors
             
             # Set initial status based on auto-approval threshold
-            if loan.risk_score >= loan_product.auto_approve_above:
-                loan.status = Loan.Status.APPROVED
-                loan.approval_date = timezone.now()
+            if application.risk_score >= loan_product.auto_approve_above:
+                application.status = LoanApplication.Status.AUTO_APPROVED
+                application.decision_date = timezone.now()
             
         if commit:
-            loan.save()
+            application.save()
             
             # Create risk alerts
             from .services.risk_alerts import RiskAlertService
-            alert_service = RiskAlertService(loan)
+            alert_service = RiskAlertService(application)
             alert_service.check_all_risk_patterns()
             
-        return loan
+        return application
 
 
 class LoanApprovalForm(forms.Form):
     """Form for loan approval."""
+    
+    decision = forms.ChoiceField(
+        choices=LoanApplication.Status.choices,
+        required=True,
+        help_text=_('Select the approval decision for this loan application.')
+    )
+    
+    approved_amount = forms.DecimalField(
+        required=False,
+        help_text=_('If approved, specify the approved loan amount.')
+    )
+    
+    interest_rate = forms.DecimalField(
+        required=False,
+        help_text=_('If approved, specify the interest rate.')
+    )
     
     notes = forms.CharField(
         widget=forms.Textarea,
         required=False,
         help_text=_('Add any notes regarding the loan approval decision.')
     )
-
-
-class LoanDocumentForm(forms.ModelForm):
-    """Form for uploading loan documents."""
     
-    class Meta:
-        model = LoanDocument
-        fields = ['document_type', 'document_path', 'description']
-        widgets = {
-            'description': forms.TextInput(attrs={'placeholder': _('Brief description of the document')}),
-        }
-    
-    def clean_document_path(self):
-        document = self.cleaned_data.get('document_path')
-        if document:
-            # Validate file size (max 5MB)
-            if document.size > 5 * 1024 * 1024:
-                raise ValidationError(_('File size cannot exceed 5MB.'))
-            
-            # Validate file extension
-            allowed_extensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
-            ext = document.name.lower().split('.')[-1]
-            if f'.{ext}' not in allowed_extensions:
-                raise ValidationError(_('Invalid file type. Allowed types: PDF, DOC, DOCX, JPG, PNG'))
+    def clean(self):
+        cleaned_data = super().clean()
+        decision = cleaned_data.get('decision')
+        approved_amount = cleaned_data.get('approved_amount')
+        interest_rate = cleaned_data.get('interest_rate')
         
-        return document
+        if decision == LoanApplication.Status.APPROVED:
+            if not approved_amount:
+                raise ValidationError(_('Approved amount is required for approved loans.'))
+            if not interest_rate:
+                raise ValidationError(_('Interest rate is required for approved loans.'))
+        
+        return cleaned_data

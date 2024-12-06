@@ -21,7 +21,7 @@
             {% endfor %}
         {% endif %}
         
-        <form method="post" action="{% url 'accounts:login' %}" class="auth-form">
+        <form method="post" class="auth-form">
             {% csrf_token %}
             <div class="form-group">
                 <label for="email">Email Address</label>
@@ -30,10 +30,6 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <div class="form-group form-check">
-                <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                <label class="form-check-label" for="remember">Remember me</label>
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary w-100">Sign In</button>
@@ -53,5 +49,50 @@
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('email').focus();
     });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Add CSRF token to all AJAX requests
+    const csrftoken = getCookie('csrftoken');
+    
+    document.querySelector('form.auth-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+});
 </script>
 {% endblock %}

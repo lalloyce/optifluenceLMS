@@ -6,6 +6,7 @@ from apps.accounts.models import User
 from django.utils import timezone
 from datetime import timedelta
 import uuid
+import numpy_financial as npf
 
 
 class LoanProduct(models.Model):
@@ -41,18 +42,21 @@ class LoanProduct(models.Model):
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
+        default=0,
         help_text=_('Maximum amount for high-risk loans (score < 40)')
     )
     medium_risk_max_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
+        default=0,
         help_text=_('Maximum amount for medium-risk loans (score 40-59)')
     )
     moderate_risk_max_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
+        default=0,
         help_text=_('Maximum amount for moderate-risk loans (score 60-79)')
     )
     
@@ -191,82 +195,88 @@ class Loan(models.Model):
         ordering = ['-application_date']
     
     def __str__(self):
-        return f"Loan {self.application_number} - {self.customer.full_name}"
+        return f"Loan {self.application_number} - {self.customer.get_full_name()}"
         
+    def get_status_display(self):
+        """Get the display name of the current status."""
+        return self.get_status_display()
+
+    def get_status_color(self):
+        """Get the Bootstrap color class for the current status."""
+        status_colors = {
+            self.Status.DRAFT: 'secondary',
+            self.Status.PENDING: 'warning',
+            self.Status.APPROVED: 'info',
+            self.Status.REJECTED: 'danger',
+            self.Status.DISBURSED: 'success',
+            self.Status.CLOSED: 'secondary',
+            self.Status.DEFAULTED: 'danger',
+        }
+        return status_colors.get(self.status, 'secondary')
+
+    def get_risk_level_color(self):
+        """Get the Bootstrap color class for the current risk level."""
+        risk_colors = {
+            self.RiskLevel.LOW: 'success',
+            self.RiskLevel.MODERATE: 'info',
+            self.RiskLevel.MEDIUM: 'warning',
+            self.RiskLevel.HIGH: 'danger',
+        }
+        return risk_colors.get(self.risk_level, 'secondary')
+
     def generate_repayment_schedule(self):
         """Generate repayment schedule for the loan."""
-        from apps.loans.models import RepaymentSchedule
-        
-        if self.status != self.Status.DISBURSED:
+        # Clear existing schedule
+        self.repayment_schedule.all().delete()
+
+        if not self.disbursement_date:
             return
-            
-        # Delete existing schedule if any
-        RepaymentSchedule.objects.filter(loan=self).delete()
-        
+
         # Calculate monthly payment using PMT formula
-        # PMT = P * (r * (1 + r)^n) / ((1 + r)^n - 1)
-        # where P = principal, r = monthly interest rate, n = number of payments
-        principal = float(self.amount)
-        annual_rate = float(self.interest_rate) / 100
-        monthly_rate = annual_rate / 12
-        num_payments = self.term_months
-        
-        # Calculate monthly payment
-        x = (1 + monthly_rate) ** num_payments
-        monthly_payment = principal * (monthly_rate * x) / (x - 1)
-        
-        remaining_principal = principal
-        payment_date = self.disbursement_date
-        
-        for i in range(1, num_payments + 1):
-            # Calculate next payment date
-            if payment_date:
-                payment_date = payment_date + timedelta(days=30)
-            else:
-                continue
-                
-            # Calculate interest and principal for this payment
+        monthly_rate = self.interest_rate / 12 / 100
+        monthly_payment = -1 * npf.pmt(monthly_rate, self.term_months, self.amount)
+
+        # Generate schedule
+        current_date = self.disbursement_date
+        remaining_principal = self.amount
+
+        for installment in range(1, self.term_months + 1):
             interest_payment = remaining_principal * monthly_rate
             principal_payment = monthly_payment - interest_payment
-            
-            # Adjust final payment to account for rounding
-            if i == num_payments:
-                principal_payment = remaining_principal
-                monthly_payment = principal_payment + interest_payment
-            
-            # Create repayment schedule entry
+            remaining_principal -= principal_payment
+
             RepaymentSchedule.objects.create(
                 loan=self,
-                installment_number=i,
-                due_date=payment_date,
-                principal_amount=round(principal_payment, 2),
-                interest_amount=round(interest_payment, 2),
-                total_amount=round(monthly_payment, 2)
+                installment_number=installment,
+                due_date=current_date + timedelta(days=30 * installment),
+                principal_amount=principal_payment,
+                interest_amount=interest_payment,
+                total_amount=monthly_payment
             )
-            
-            remaining_principal -= principal_payment
-            
+
     def save(self, *args, **kwargs):
-        # Update risk level based on risk score
-        if self.risk_score is not None:
-            if self.risk_score >= 80:
-                self.risk_level = self.RiskLevel.LOW
-            elif self.risk_score >= 60:
-                self.risk_level = self.RiskLevel.MODERATE
-            elif self.risk_score >= 40:
-                self.risk_level = self.RiskLevel.MEDIUM
-            else:
-                self.risk_level = self.RiskLevel.HIGH
-        
-        # If status changed to DISBURSED, generate repayment schedule
-        if self.pk:
-            old_instance = Loan.objects.get(pk=self.pk)
-            if old_instance.status != self.Status.DISBURSED and self.status == self.Status.DISBURSED:
-                super().save(*args, **kwargs)
-                self.generate_repayment_schedule()
-                return
-        
+        """Override save to handle status transitions and related actions."""
+        if not self.application_number:
+            # Generate application number
+            year = timezone.now().year
+            count = Loan.objects.filter(
+                application_date__year=year
+            ).count() + 1
+            self.application_number = f"L{year}{count:06d}"
+
+        # Handle status transitions
+        if self.status == self.Status.APPROVED and not self.approval_date:
+            self.approval_date = timezone.now()
+        elif self.status == self.Status.DISBURSED and not self.disbursement_date:
+            self.disbursement_date = timezone.now()
+            # Calculate maturity date
+            self.maturity_date = self.disbursement_date + timedelta(days=30 * self.term_months)
+
         super().save(*args, **kwargs)
+
+        # Generate repayment schedule if disbursed
+        if self.status == self.Status.DISBURSED:
+            self.generate_repayment_schedule()
 
 
 class RiskAlert(models.Model):

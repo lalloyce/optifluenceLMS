@@ -53,7 +53,7 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.LOAN_OFFICER
+        default=Role.LOAN_OFFICER,
     )
     is_email_verified = models.BooleanField(
         _('email verified'),
@@ -74,12 +74,10 @@ class User(AbstractUser):
     password_reset_token = models.CharField(max_length=100, blank=True, null=True)
     password_reset_token_created = models.DateTimeField(null=True, blank=True)
     
-    # Make email the unique identifier
+    objects = UserManager()
+    
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
-    
-    # Use custom manager
-    objects = UserManager()
     
     class Meta:
         verbose_name = _('user')
@@ -87,6 +85,18 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+
+    def get_full_name(self):
+        """Return the user's full name or email if name is not set."""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        return self.email
+
+    def get_short_name(self):
+        """Return the user's first name or email if not set."""
+        return self.first_name if self.first_name else self.email
 
 
 class UserProfile(models.Model):
