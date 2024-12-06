@@ -1,3 +1,6 @@
+import pymysql
+pymysql.install_as_MySQLdb()
+
 """
 Django settings for OptifluenceLMS project.
 """
@@ -6,6 +9,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +24,15 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
+# CSRF Settings
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']
+CSRF_COOKIE_SECURE = False  # Set to True in production
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to CSRF token
+CSRF_USE_SESSIONS = False  # Store CSRF token in cookie instead of session
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_NAME = 'csrftoken'
 
 # Application definition
 INSTALLED_APPS = [
@@ -48,15 +61,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',  
-    'apps.accounts.middleware.SessionManagementMiddleware',
-    'apps.core.middleware.RateLimitMiddleware',
-    'apps.mpesastk.middleware.MPesaErrorMiddleware',  # Add MPesa error middleware
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -84,15 +92,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'HOST': 'aws-0-eu-central-1.pooler.supabase.com',
-        'NAME': 'postgres',
-        'USER': 'postgres.tsgtzmqjrqimepiiuusm',
-        'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD', ''),
-        'PORT': '6543',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'optifluence_lms',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
         'OPTIONS': {
-            'sslmode': 'require'
-        }
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
     }
 }
 
@@ -104,14 +113,25 @@ CACHES = {
     }
 }
 
-# Session settings
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 1800  # 30 minutes in seconds
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
+
+# Authentication settings
+AUTHENTICATION_BACKENDS = [
+    'apps.accounts.backends.EmailBackend',
+]
+
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'accounts:dashboard'
+LOGOUT_REDIRECT_URL = 'accounts:login'
+
+# Session settings
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 3600  # 1 hour in seconds
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = False  # Set to True in production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -160,7 +180,14 @@ CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if not D
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
+
+# Format date strings
+DATE_FORMAT = 'Y-m-d'
+DATETIME_FORMAT = 'Y-m-d H:i:s'
+DATE_INPUT_FORMATS = ['%Y-%m-%d']
+DATETIME_INPUT_FORMATS = ['%Y-%m-%d %H:%M:%S']
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -189,46 +216,6 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 
-# Authentication Backend
-AUTHENTICATION_BACKENDS = [
-    'apps.accounts.backends.EmailBackend',
-    'django.contrib.auth.backends.ModelBackend',
-]
-
-# Security Settings
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'SAMEORIGIN'
-CSRF_COOKIE_SECURE = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-SECURE_SSL_REDIRECT = not DEBUG
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-
-# Session Security Settings
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_SAMESITE = 'Strict'
-CSRF_COOKIE_SAMESITE = 'Strict'
-
-# Rate Limiting Settings
-RATE_LIMITS = {
-    'login': {'limit': 5, 'period': 300},  # 5 attempts per 5 minutes
-    'register': {'limit': 3, 'period': 3600},  # 3 attempts per hour
-    'password_reset': {'limit': 3, 'period': 3600},  # 3 attempts per hour
-    'verify_email': {'limit': 3, 'period': 3600},  # 3 attempts per hour
-}
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'
-RATELIMIT_FAIL_OPEN = False
-
-# Login URL settings
-LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'accounts:dashboard'
-LOGOUT_REDIRECT_URL = 'accounts:login'
-
 # Public URLs that don't require authentication
 PUBLIC_URLS = [
     'accounts:login',
@@ -241,21 +228,6 @@ PUBLIC_URLS = [
     'accounts:resend_verification',
     'admin:login',
 ]
-
-# CSRF Settings
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'https://localhost:8000',
-    'https://127.0.0.1:8000',
-]
-
-if not DEBUG:
-    # In production, add your actual domain
-    CSRF_TRUSTED_ORIGINS.extend([
-        f"https://{host.strip()}" for host in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
-        if host.strip()
-    ])
 
 # MPesa Settings
 MPESA_ENVIRONMENT = os.getenv('MPESA_ENVIRONMENT', 'sandbox')
@@ -337,3 +309,23 @@ LOGGING = {
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
+
+# Rate Limiting Settings
+RATE_LIMITS = {
+    'login': {'limit': 5, 'period': 300},  # 5 attempts per 5 minutes
+    'register': {'limit': 3, 'period': 3600},  # 3 attempts per hour
+    'password_reset': {'limit': 3, 'period': 3600},  # 3 attempts per hour
+    'verify_email': {'limit': 3, 'period': 3600},  # 3 attempts per hour
+}
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_FAIL_OPEN = False
+
+# Security Settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True

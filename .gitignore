@@ -1,5 +1,5 @@
 # Environment variables
-.env
+# .env  # Temporarily removed
 .env.local
 .env.*.local
 .env.development
@@ -42,8 +42,6 @@ ENV/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media/
-staticfiles/
 
 # IDE - VSCode
 .vscode/
@@ -59,6 +57,13 @@ staticfiles/
 # IDE - Sublime Text
 *.sublime-workspace
 *.sublime-project
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
 # macOS
 .DS_Store
@@ -102,9 +107,6 @@ celerybeat.pid
 # Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # PHP legacy files
 *.php
