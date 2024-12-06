@@ -5,6 +5,7 @@
 .env.development
 .env.test
 .env.production
+.env
 
 # Python
 __pycache__/
@@ -103,6 +104,7 @@ celerybeat.pid
 *.sql
 *.sqlite
 /vendor/
+/staticfiles/
 
 # Logs
 logs/
