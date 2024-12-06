@@ -4,10 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% csrf_token %}
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:;">
-    {% csrf_token %}
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; form-action 'self';">
     <title>{% block title %}OptifluenceLMS{% endblock %}</title>
     
     <!-- Google Fonts -->
@@ -36,13 +38,13 @@
                 {% if user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'web_customers:customers.list' %}">Customers</a>
+                        <a class="nav-link" href="{% url 'web_customers:list' %}">Customers</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'web_loans:loans.list' %}">Loans</a>
+                        <a class="nav-link" href="{% url 'web_loans:list' %}">Loans</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'web_transactions:transactions.list' %}">Transactions</a>
+                        <a class="nav-link" href="{% url 'web_transactions:list' %}">Transactions</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'reports' %}">Reports</a>
