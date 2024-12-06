@@ -111,14 +111,14 @@ def customer_create(request):
                         del request.session['customer_form_data']
                         
                         messages.success(request, 'Customer created successfully.')
-                        return redirect('web_customers:customers.detail', pk=customer.pk)
+                        return redirect('web_customers:detail', pk=customer.pk)
                     except Exception as e:
                         logger.error(f"Error creating customer: {str(e)}")
                         messages.error(request, f"Error creating customer: {str(e)}")
                 else:
                     logger.info(f"Moving to next step: {current_step + 1}")
                     request.session['customer_creation_step'] = current_step + 1
-                    return redirect('web_customers:customers.create')
+                    return redirect('web_customers:create')
             else:
                 logger.error(f"Form validation failed. Errors: {form.errors}")
                 for field, errors in form.errors.items():
@@ -128,7 +128,7 @@ def customer_create(request):
         elif action == 'previous' and current_step > 1:
             logger.info(f"Moving to previous step: {current_step - 1}")
             request.session['customer_creation_step'] = current_step - 1
-            return redirect('web_customers:customers.create')
+            return redirect('web_customers:create')
     
     # Determine which form to show
     logger.info(f"Preparing form for step {current_step}")
