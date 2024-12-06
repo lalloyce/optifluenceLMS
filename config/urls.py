@@ -14,7 +14,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Frontend URLs
-    path('', login_required(RedirectView.as_view(url='/accounts/dashboard/')), name='home'),
+    path('', account_views.login_view, name='home'),
     path('reports/', login_required(account_views.reports_view), name='reports'),
     
     # Non-API account URLs
@@ -25,11 +25,11 @@ urlpatterns = [
     path('loans/', include('apps.loans.urls', namespace='web_loans')),
     path('transactions/', include('apps.transactions.urls', namespace='web_transactions')),
     
-    # API endpoints
-    path('api/v1/customers/', include('apps.customers.api_urls', namespace='api_customers')),
-    path('api/v1/loans/', include('apps.loans.urls', namespace='api_loans')),
-    path('api/v1/transactions/', include('apps.transactions.urls', namespace='api_transactions')),
-    path('api/v1/mpesa/', include('apps.mpesastk.urls', namespace='api_mpesa')),
+    # API endpoints (temporarily disabled)
+    # path('api/v1/customers/', include('apps.customers.api_urls', namespace='api_customers')),
+    # path('api/v1/loans/', include('apps.loans.api_urls', namespace='api_loans')),
+    # path('api/v1/transactions/', include('apps.transactions.api_urls', namespace='api_transactions')),
+    # path('api/v1/mpesa/', include('apps.mpesastk.urls', namespace='api_mpesa')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Serve static files during development

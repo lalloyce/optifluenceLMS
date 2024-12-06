@@ -8,6 +8,9 @@ urlpatterns = [
     # Dashboard URL
     path('dashboard/', views.dashboard_view, name='dashboard'),
     
+    # Reports URL
+    path('reports/', views.reports_view, name='reports'),
+    
     # Authentication URLs
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
