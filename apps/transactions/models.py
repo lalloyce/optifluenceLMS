@@ -1,8 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
+from django.conf import settings
 from apps.loans.models import Loan
-from apps.accounts.models import User
 
 
 class Transaction(models.Model):
@@ -24,7 +24,7 @@ class Transaction(models.Model):
     loan = models.ForeignKey(
         Loan,
         on_delete=models.PROTECT,
-        related_name='transactions'
+        related_name='transaction_records'
     )
     transaction_type = models.CharField(
         max_length=20,
@@ -44,7 +44,7 @@ class Transaction(models.Model):
     reference_number = models.CharField(max_length=50, unique=True)
     description = models.TextField(null=True, blank=True)
     processed_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='processed_transactions'
     )
@@ -59,6 +59,33 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.reference_number} - {self.get_transaction_type_display()}"
 
+    def get_transaction_type_color(self):
+        """Get the Bootstrap color class for the transaction type."""
+        type_colors = {
+            self.TransactionType.DISBURSEMENT: 'success',
+            self.TransactionType.REPAYMENT: 'primary',
+            self.TransactionType.PENALTY: 'danger',
+            self.TransactionType.FEE: 'warning',
+            self.TransactionType.OTHER: 'secondary',
+        }
+        return type_colors.get(self.transaction_type, 'secondary')
+
+    def get_status_color(self):
+        """Get the Bootstrap color class for the transaction status."""
+        status_colors = {
+            self.Status.PENDING: 'warning',
+            self.Status.COMPLETED: 'success',
+            self.Status.FAILED: 'danger',
+            self.Status.REVERSED: 'secondary',
+        }
+        return status_colors.get(self.status, 'secondary')
+
+    def get_amount_display(self):
+        """Get formatted amount with sign based on transaction type."""
+        if self.transaction_type in [self.TransactionType.REPAYMENT, self.TransactionType.PENALTY, self.TransactionType.FEE]:
+            return f"-{self.amount:,.2f}"
+        return f"+{self.amount:,.2f}"
+
 
 class RepaymentSchedule(models.Model):
     """Model for tracking loan repayment schedules."""
@@ -72,7 +99,7 @@ class RepaymentSchedule(models.Model):
     loan = models.ForeignKey(
         Loan,
         on_delete=models.CASCADE,
-        related_name='repayment_schedule'
+        related_name='repayment_schedules'
     )
     installment_number = models.IntegerField()
     due_date = models.DateTimeField()

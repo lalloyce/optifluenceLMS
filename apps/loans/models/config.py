@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.conf import settings
 
 class LoanConfig(models.Model):
     """Configuration model for loan parameters."""
@@ -49,15 +50,17 @@ class LoanConfig(models.Model):
     
     # Audit Fields
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        'auth.User',
-        on_delete=models.PROTECT,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='loan_configs_created'
     )
-    updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
-        'auth.User',
-        on_delete=models.PROTECT,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='loan_configs_updated'
     )
     
@@ -65,8 +68,7 @@ class LoanConfig(models.Model):
         ordering = ['-effective_from']
         constraints = [
             models.CheckConstraint(
-                check=models.Q(effective_to__isnull=True) | 
-                      models.Q(effective_to__gt=models.F('effective_from')),
+                check=models.Q(effective_to__isnull=True) | models.Q(effective_to__gt=models.F('effective_from')),
                 name='effective_to_after_from'
             )
         ]
