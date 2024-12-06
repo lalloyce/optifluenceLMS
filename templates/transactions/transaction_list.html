@@ -1,0 +1,191 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Transactions - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Transactions</h2>
+                <a href="{% url 'web_transactions:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Record New Transaction
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="q" class="form-label">Search</label>
+                            <input type="text" name="q" id="q" class="form-control" 
+                                   value="{{ search_query }}" 
+                                   placeholder="Search by reference number, loan number or customer name">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="date_range" class="form-label">Date Range</label>
+                            <input type="text" name="date_range" id="date_range" class="form-control" 
+                                   value="{{ date_range }}" placeholder="Select date range">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                            <a href="{% url 'web_transactions:list' %}" class="btn btn-outline-secondary">Clear Filters</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Loan</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'web_transactions:detail' transaction.pk %}" class="text-decoration-none">
+                                            {{ transaction.reference_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ transaction.transaction_date|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if transaction.transaction_type == 'DISBURSEMENT' %}
+                                            <span class="badge bg-success">Disbursement</span>
+                                        {% elif transaction.transaction_type == 'REPAYMENT' %}
+                                            <span class="badge bg-info">Repayment</span>
+                                        {% elif transaction.transaction_type == 'PENALTY' %}
+                                            <span class="badge bg-warning">Penalty</span>
+                                        {% elif transaction.transaction_type == 'FEE' %}
+                                            <span class="badge bg-secondary">Fee</span>
+                                        {% else %}
+                                            <span class="badge bg-dark">Other</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'web_loans:detail' transaction.loan.pk %}" class="text-decoration-none">
+                                            {{ transaction.loan.application_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ transaction.amount|floatformat:2 }}</td>
+                                    <td>
+                                        {% if transaction.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif transaction.status == 'PENDING' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif transaction.status == 'FAILED' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif transaction.status == 'REVERSED' %}
+                                            <span class="badge bg-secondary">Reversed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'web_transactions:detail' transaction.pk %}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if transaction.status == 'COMPLETED' %}
+                                            <a href="{% url 'web_transactions:reverse' transaction.pk %}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               title="Reverse Transaction">
+                                                <i class="fas fa-undo"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.paginator.num_pages > 1 %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    Previous
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    Next
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">No transactions found matching your criteria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize date range picker
+        $('#date_range').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear'
+            }
+        });
+
+        $('#date_range').on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+        });
+
+        $('#date_range').on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+        });
+    });
+</script>
+{% endblock %}

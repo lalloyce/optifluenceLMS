@@ -1,15 +1,15 @@
-{% extends 'base/base.html' %}
+{% extends 'base/dashboard_base.html' %}
 {% load static %}
 
 {% block title %}Loans - OptifluenceLMS{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Loans</h2>
-                <a href="{% url 'loans:apply' %}" class="btn btn-primary">
+                <a href="{% url 'web_loans:apply' %}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>New Loan Application
                 </a>
             </div>
@@ -33,16 +33,23 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label for="search" class="form-label">Search</label>
-                            <input type="text" name="search" id="search" class="form-control" 
-                                   placeholder="Search by customer name or loan number" 
-                                   value="{{ request.GET.search }}">
+                        <div class="col-md-4">
+                            <label for="customer" class="form-label">Customer</label>
+                            <input type="text" name="customer" id="customer" class="form-control" 
+                                   value="{{ customer_query }}" placeholder="Search by customer name">
                         </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search me-2"></i>Search
+                        <div class="col-md-4">
+                            <label for="date_range" class="form-label">Date Range</label>
+                            <input type="text" name="date_range" id="date_range" class="form-control" 
+                                   value="{{ date_range }}" placeholder="Select date range">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Apply Filters
                             </button>
+                            <a href="{% url 'web_loans:list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo me-2"></i>Clear Filters
+                            </a>
                         </div>
                     </form>
                 </div>
@@ -50,7 +57,7 @@
         </div>
     </div>
 
-    <!-- Loans Table -->
+    <!-- Loan List -->
     <div class="row">
         <div class="col">
             <div class="card">
@@ -64,7 +71,7 @@
                                     <th>Customer</th>
                                     <th>Amount</th>
                                     <th>Status</th>
-                                    <th>Application Date</th>
+                                    <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -72,55 +79,50 @@
                                 {% for loan in page_obj %}
                                 <tr>
                                     <td>
-                                        <a href="{% url 'loans:detail' loan.pk %}" class="text-decoration-none">
+                                        <a href="{% url 'web_loans:detail' loan.pk %}" class="text-decoration-none">
                                             {{ loan.application_number }}
                                         </a>
                                     </td>
-                                    <td>{{ loan.customer.get_full_name }}</td>
-                                    <td>${{ loan.amount }}</td>
                                     <td>
-                                        {% if loan.status == 'PENDING' %}
-                                        <span class="badge bg-warning">Pending</span>
-                                        {% elif loan.status == 'APPROVED' %}
-                                        <span class="badge bg-success">Approved</span>
-                                        {% elif loan.status == 'REJECTED' %}
-                                        <span class="badge bg-danger">Rejected</span>
-                                        {% elif loan.status == 'DISBURSED' %}
-                                        <span class="badge bg-info">Disbursed</span>
-                                        {% elif loan.status == 'CLOSED' %}
-                                        <span class="badge bg-secondary">Closed</span>
-                                        {% elif loan.status == 'DEFAULTED' %}
-                                        <span class="badge bg-danger">Defaulted</span>
-                                        {% endif %}
+                                        <a href="{% url 'web_customers:detail' loan.customer.pk %}" class="text-decoration-none">
+                                            {{ loan.customer.get_full_name }}
+                                        </a>
                                     </td>
-                                    <td>{{ loan.application_date|date:"M d, Y" }}</td>
+                                    <td>{{ loan.amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ loan.get_status_color }}">
+                                            {{ loan.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ loan.created_at|date:"M d, Y" }}</td>
                                     <td>
                                         <div class="btn-group">
-                                            <a href="{% url 'loans:detail' loan.pk %}" 
-                                               class="btn btn-sm btn-outline-primary">
+                                            <a href="{% url 'web_loans:detail' loan.pk %}" 
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            {% if loan.status == 'PENDING' and perms.loans.can_approve_loans %}
+                                            {% if loan.status == 'PENDING' %}
                                             <button type="button" class="btn btn-sm btn-outline-success"
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#approveModal{{ loan.pk }}">
+                                                    data-bs-toggle="modal" data-bs-target="#approveModal{{ loan.pk }}"
+                                                    title="Approve Loan">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger"
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#rejectModal{{ loan.pk }}">
+                                                    data-bs-toggle="modal" data-bs-target="#rejectModal{{ loan.pk }}"
+                                                    title="Reject Loan">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                             {% endif %}
-                                            {% if loan.status == 'APPROVED' and perms.loans.can_disburse_loans %}
-                                            <button type="button" class="btn btn-sm btn-outline-info"
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#disburseModal{{ loan.pk }}">
+                                            {% if loan.status == 'APPROVED' %}
+                                            <a href="{% url 'web_loans:disburse' loan.pk %}" 
+                                               class="btn btn-sm btn-outline-info"
+                                               title="Disburse Loan">
                                                 <i class="fas fa-money-bill-wave"></i>
-                                            </button>
+                                            </a>
                                             {% endif %}
                                         </div>
-                                        
+
                                         <!-- Approve Modal -->
                                         <div class="modal fade" id="approveModal{{ loan.pk }}" tabindex="-1">
                                             <div class="modal-dialog">
@@ -129,14 +131,13 @@
                                                         <h5 class="modal-title">Approve Loan</h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
-                                                    <form method="post" action="{% url 'loans:approve' loan.pk %}">
+                                                    <form method="post" action="{% url 'web_loans:approve' loan.pk %}">
                                                         {% csrf_token %}
                                                         <div class="modal-body">
-                                                            <p>Are you sure you want to approve this loan?</p>
+                                                            <p>Are you sure you want to approve this loan application?</p>
                                                             <div class="mb-3">
-                                                                <label for="approveNotes{{ loan.pk }}" class="form-label">Notes</label>
-                                                                <textarea class="form-control" id="approveNotes{{ loan.pk }}" 
-                                                                          name="notes" rows="3"></textarea>
+                                                                <label for="notes" class="form-label">Notes</label>
+                                                                <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
                                                             </div>
                                                         </div>
                                                         <div class="modal-footer">
@@ -147,7 +148,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Reject Modal -->
                                         <div class="modal fade" id="rejectModal{{ loan.pk }}" tabindex="-1">
                                             <div class="modal-dialog">
@@ -156,44 +157,18 @@
                                                         <h5 class="modal-title">Reject Loan</h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
-                                                    <form method="post" action="{% url 'loans:reject' loan.pk %}">
+                                                    <form method="post" action="{% url 'web_loans:reject' loan.pk %}">
                                                         {% csrf_token %}
                                                         <div class="modal-body">
-                                                            <p>Are you sure you want to reject this loan?</p>
+                                                            <p>Are you sure you want to reject this loan application?</p>
                                                             <div class="mb-3">
-                                                                <label for="rejectNotes{{ loan.pk }}" class="form-label">Reason for Rejection</label>
-                                                                <textarea class="form-control" id="rejectNotes{{ loan.pk }}" 
-                                                                          name="notes" rows="3" required></textarea>
+                                                                <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                                                                <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required></textarea>
                                                             </div>
                                                         </div>
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                             <button type="submit" class="btn btn-danger">Reject</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Disburse Modal -->
-                                        <div class="modal fade" id="disburseModal{{ loan.pk }}" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Disburse Loan</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <form method="post" action="{% url 'loans:disburse' loan.pk %}">
-                                                        {% csrf_token %}
-                                                        <div class="modal-body">
-                                                            <p>Are you sure you want to mark this loan as disbursed?</p>
-                                                            <div class="alert alert-info">
-                                                                <strong>Amount to Disburse:</strong> ${{ loan.amount }}
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                            <button type="submit" class="btn btn-info">Disburse</button>
                                                         </div>
                                                     </form>
                                                 </div>
@@ -205,32 +180,32 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination -->
                     {% if page_obj.paginator.num_pages > 1 %}
                     <nav aria-label="Page navigation" class="mt-4">
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">&laquo; First</a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if customer_query %}&customer={{ customer_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    Previous
+                                </a>
                             </li>
                             {% endif %}
-                            
-                            <li class="page-item active">
-                                <span class="page-link">
-                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                                </span>
+
+                            {% for num in page_obj.paginator.page_range %}
+                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                <a class="page-link" href="?page={{ num }}{% if status %}&status={{ status }}{% endif %}{% if customer_query %}&customer={{ customer_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    {{ num }}
+                                </a>
                             </li>
-                            
+                            {% endfor %}
+
                             {% if page_obj.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Last &raquo;</a>
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if customer_query %}&customer={{ customer_query }}{% endif %}{% if date_range %}&date_range={{ date_range }}{% endif %}">
+                                    Next
+                                </a>
                             </li>
                             {% endif %}
                         </ul>
@@ -238,11 +213,7 @@
                     {% endif %}
                     {% else %}
                     <div class="text-center py-4">
-                        <h4>No loans found</h4>
-                        <p class="text-muted">Try adjusting your search criteria or create a new loan application.</p>
-                        <a href="{% url 'loans:apply' %}" class="btn btn-primary mt-3">
-                            <i class="fas fa-plus me-2"></i>New Loan Application
-                        </a>
+                        <p class="text-muted">No loans found matching your criteria.</p>
                     </div>
                     {% endif %}
                 </div>
@@ -250,4 +221,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize date range picker
+        $('#date_range').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear'
+            }
+        });
+
+        $('#date_range').on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+        });
+
+        $('#date_range').on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+        });
+    });
+</script>
 {% endblock %}

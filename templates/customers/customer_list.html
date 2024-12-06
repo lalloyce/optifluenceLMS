@@ -1,0 +1,159 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Customers - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Customers</h2>
+                <a href="{% url 'web_customers:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Customer
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-8">
+                            <input type="text" name="q" value="{{ search_query }}"
+                                   class="form-control"
+                                   placeholder="Search by name, ID number, email or phone...">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer List -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Contact</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for customer in customers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold">{{ customer.get_full_name }}</span>
+                                            <small class="text-muted">ID: {{ customer.id_number }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span>{{ customer.email }}</span>
+                                            <small class="text-muted">{{ customer.phone_number }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if customer.is_business %}
+                                            <span class="badge bg-purple">Business</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Individual</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if customer.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'web_customers:detail' customer.pk %}" 
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'web_customers:edit' customer.pk %}" 
+                                               class="btn btn-sm btn-outline-secondary"
+                                               title="Edit Customer">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'web_customers:delete' customer.pk %}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               title="Delete Customer">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <p class="text-muted mb-0">No customers found matching your criteria.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if customers.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if customers.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ customers.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">
+                                    Previous
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for i in customers.paginator.page_range %}
+                                {% if customers.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ i }}</span>
+                                </li>
+                                {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}{% if search_query %}&q={{ search_query }}{% endif %}">
+                                        {{ i }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if customers.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ customers.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">
+                                    Next
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
