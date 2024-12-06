@@ -1,0 +1,257 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Reports Dashboard - OptifluenceLMS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+<style>
+    .stats-card {
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        position: relative;
+        margin: auto;
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-0">Reports Dashboard</h2>
+            <p class="text-muted">Financial and operational metrics overview</p>
+        </div>
+        <div class="col-auto">
+            <form method="get" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <input type="text" name="date_range" id="date_range" class="form-control" 
+                           value="{{ start_date|date:'m/d/Y' }} - {{ end_date|date:'m/d/Y' }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Loans</h5>
+                    <h2 class="mb-0">{{ loan_stats.total_loans }}</h2>
+                    <small>All time loans</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Loans</h5>
+                    <h2 class="mb-0">{{ loan_stats.active_loans }}</h2>
+                    <small>Currently disbursed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Loans</h5>
+                    <h2 class="mb-0">{{ loan_stats.pending_loans }}</h2>
+                    <small>Awaiting approval</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Defaulted Loans</h5>
+                    <h2 class="mb-0">{{ loan_stats.defaulted_loans }}</h2>
+                    <small>Past due date</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row mb-4">
+        <!-- Monthly Disbursements -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Monthly Loan Disbursements</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyDisbursementsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Collections -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Monthly Collections</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyCollectionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Summary -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Transaction Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Total Repayments</h6>
+                            <p class="h3">{{ transaction_stats.total_repayments.total_amount|default:0|floatformat:2 }}</p>
+                            <small class="text-muted">From {{ transaction_stats.total_repayments.count }} transactions</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Initialize date range picker
+    $('#date_range').daterangepicker({
+        startDate: moment('{{ start_date|date:"Y-m-d" }}'),
+        endDate: moment('{{ end_date|date:"Y-m-d" }}'),
+        locale: {
+            format: 'MM/DD/YYYY'
+        }
+    });
+
+    // Prepare data for monthly disbursements chart
+    const disbursementLabels = [
+        {% for item in monthly_disbursements %}
+            '{{ item.month|date:"M Y" }}',
+        {% endfor %}
+    ];
+    const disbursementData = [
+        {% for item in monthly_disbursements %}
+            {{ item.total_amount|default:0 }},
+        {% endfor %}
+    ];
+    const disbursementCounts = [
+        {% for item in monthly_disbursements %}
+            {{ item.count }},
+        {% endfor %}
+    ];
+
+    // Monthly disbursements chart
+    new Chart(document.getElementById('monthlyDisbursementsChart'), {
+        type: 'bar',
+        data: {
+            labels: disbursementLabels,
+            datasets: [{
+                label: 'Amount Disbursed',
+                data: disbursementData,
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgb(54, 162, 235)',
+                borderWidth: 1,
+                yAxisID: 'y'
+            }, {
+                label: 'Number of Loans',
+                data: disbursementCounts,
+                type: 'line',
+                borderColor: 'rgb(255, 99, 132)',
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Amount'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Prepare data for monthly collections chart
+    const collectionLabels = [
+        {% for item in transaction_stats.monthly_collections %}
+            '{{ item.month|date:"M Y" }}',
+        {% endfor %}
+    ];
+    const collectionData = [
+        {% for item in transaction_stats.monthly_collections %}
+            {{ item.total_amount|default:0 }},
+        {% endfor %}
+    ];
+
+    // Monthly collections chart
+    new Chart(document.getElementById('monthlyCollectionsChart'), {
+        type: 'line',
+        data: {
+            labels: collectionLabels,
+            datasets: [{
+                label: 'Collections',
+                data: collectionData,
+                fill: true,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Amount Collected'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
