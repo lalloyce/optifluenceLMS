@@ -8,10 +8,9 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
 
-from .models import Loan, LoanProduct, LoanDocument
-from .forms import LoanApplicationForm, LoanApprovalForm, LoanDocumentForm
+from .models import Loan, LoanProduct, LoanApplication
+from .forms import LoanApplicationForm, LoanApprovalForm
 from apps.customers.models import Customer
-from apps.transactions.models import RepaymentSchedule, Transaction
 import json
 from decimal import Decimal
 from datetime import timedelta, datetime
@@ -142,12 +141,11 @@ def loan_application(request):
     if request.method == 'POST':
         form = LoanApplicationForm(request.POST)
         if form.is_valid():
-            loan = form.save(commit=False)
-            loan.loan_officer = request.user
-            loan.status = Loan.Status.PENDING
-            loan.save()
+            application = form.save(commit=False)
+            application.status = LoanApplication.Status.SUBMITTED
+            application.save()
             messages.success(request, 'Loan application submitted successfully.')
-            return redirect('loans:loan_detail', pk=loan.pk)
+            return redirect('loans:application_detail', pk=application.pk)
     else:
         form = LoanApplicationForm()
     
@@ -191,214 +189,127 @@ def loan_list(request):
 def loan_detail(request, pk):
     """Display detailed information about a loan."""
     loan = get_object_or_404(Loan, pk=pk)
-    documents = loan.documents.all()
-    
-    if request.method == 'POST':
-        doc_form = LoanDocumentForm(request.POST, request.FILES)
-        if doc_form.is_valid():
-            document = doc_form.save(commit=False)
-            document.loan = loan
-            document.uploaded_by = request.user
-            document.save()
-            messages.success(request, 'Document uploaded successfully.')
-            return redirect('loans:loan_detail', pk=pk)
-    else:
-        doc_form = LoanDocumentForm()
     
     context = {
         'loan': loan,
-        'documents': documents,
-        'doc_form': doc_form,
+        'repayment_schedule': loan.repayment_schedule.all().order_by('installment_number')
     }
     return render(request, 'loans/loan_detail.html', context)
 
 @login_required
-def loan_create(request):
-    """Create a new loan application."""
-    if request.method == 'POST':
-        form = LoanApplicationForm(request.POST)
-        if form.is_valid():
-            loan = form.save(commit=False)
-            loan.loan_officer = request.user
-            loan.status = Loan.Status.DRAFT
-            loan.save()
-            messages.success(request, 'New loan application created successfully.')
+def application_detail(request, pk):
+    """Display detailed information about a loan application."""
+    application = get_object_or_404(LoanApplication, pk=pk)
+    
+    if request.method == 'POST' and request.user.has_perm('loans.can_approve_loans'):
+        action = request.POST.get('action')
+        if action == 'approve':
+            application.approve()
+            loan = Loan.create_from_application(application, request.user)
+            messages.success(request, 'Loan application approved successfully.')
             return redirect('loans:loan_detail', pk=loan.pk)
-    else:
-        form = LoanApplicationForm()
+        elif action == 'reject':
+            reason = request.POST.get('rejection_reason')
+            application.reject(reason)
+            messages.success(request, 'Loan application rejected.')
+        elif action == 'review':
+            application.start_review(request.user)
+            messages.success(request, 'Application review started.')
     
     context = {
-        'form': form,
-        'loan_products': LoanProduct.objects.filter(is_active=True),
-        'title': 'Create New Loan',
-        'submit_text': 'Create Loan'
+        'application': application,
     }
-    return render(request, 'loans/loan_form.html', context)
+    return render(request, 'loans/application_detail.html', context)
 
 @login_required
-def loan_edit(request, pk):
-    """Edit an existing loan."""
-    loan = get_object_or_404(Loan, pk=pk)
-    
-    # Check if user has permission to edit the loan
-    if not request.user.has_perm('loans.change_loan'):
-        raise PermissionDenied
-    
-    if request.method == 'POST':
-        form = LoanApplicationForm(request.POST, instance=loan)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Loan updated successfully.')
-            return redirect('loans:loans.detail', pk=loan.pk)
-    else:
-        form = LoanApplicationForm(instance=loan)
-    
-    context = {
-        'form': form,
-        'loan': loan,
-        'title': 'Edit Loan',
-    }
-    return render(request, 'loans/loan_form.html', context)
-
-@login_required
-@require_http_methods(['POST'])
 def loan_approve(request, pk):
     """Handle loan approval process."""
     loan = get_object_or_404(Loan, pk=pk)
     
-    # Check if user has permission to approve loans
     if not request.user.has_perm('loans.can_approve_loans'):
         raise PermissionDenied
-    
-    form = LoanApprovalForm(request.POST)
-    if form.is_valid():
-        loan.status = Loan.Status.APPROVED
-        loan.approval_date = timezone.now()
-        loan.notes = form.cleaned_data['notes']
-        loan.save()
         
-        messages.success(request, 'Loan approved successfully.')
+    if request.method == 'POST':
+        form = LoanApprovalForm(request.POST, instance=loan)
+        if form.is_valid():
+            loan = form.save(commit=False)
+            loan.status = Loan.Status.APPROVED
+            loan.approval_date = timezone.now()
+            loan.save()
+            messages.success(request, 'Loan approved successfully.')
+            return redirect('loans:loan_detail', pk=loan.pk)
     else:
-        messages.error(request, 'Error approving loan. Please check the form.')
+        form = LoanApprovalForm(instance=loan)
     
-    return redirect('loans:loan_detail', pk=pk)
+    context = {
+        'form': form,
+        'loan': loan,
+    }
+    return render(request, 'loans/loan_approve.html', context)
 
 @login_required
-@require_http_methods(['POST'])
 def loan_reject(request, pk):
     """Handle loan rejection."""
     loan = get_object_or_404(Loan, pk=pk)
     
-    # Check if user has permission to reject loans
     if not request.user.has_perm('loans.can_approve_loans'):
         raise PermissionDenied
+        
+    if request.method == 'POST':
+        reason = request.POST.get('rejection_reason')
+        loan.status = Loan.Status.REJECTED
+        loan.notes = (loan.notes or '') + f"\nRejection Reason: {reason}"
+        loan.save()
+        messages.success(request, 'Loan rejected successfully.')
+        return redirect('loans:loan_detail', pk=loan.pk)
     
-    notes = request.POST.get('notes', '')
-    loan.status = Loan.Status.REJECTED
-    loan.notes = notes
-    loan.save()
-    
-    messages.success(request, 'Loan application rejected.')
-    return redirect('loans:loan_detail', pk=pk)
+    return render(request, 'loans/loan_reject.html', {'loan': loan})
 
 @login_required
-@require_http_methods(['POST'])
 def loan_disburse(request, pk):
     """Handle loan disbursement."""
     loan = get_object_or_404(Loan, pk=pk)
     
-    # Check if user has permission to disburse loans
     if not request.user.has_perm('loans.can_disburse_loans'):
         raise PermissionDenied
-    
+        
     if loan.status != Loan.Status.APPROVED:
         messages.error(request, 'Only approved loans can be disbursed.')
-        return redirect('loans:loan_detail', pk=pk)
-    
-    loan.status = Loan.Status.DISBURSED
-    loan.disbursement_date = timezone.now()
-    loan.save()
-    
-    messages.success(request, 'Loan disbursed successfully.')
-    return redirect('loans:loan_detail', pk=pk)
-
-@login_required
-def loan_documents(request, pk):
-    """Handle loan document uploads and listing."""
-    loan = get_object_or_404(Loan, pk=pk)
-    
+        return redirect('loans:loan_detail', pk=loan.pk)
+        
     if request.method == 'POST':
-        form = LoanDocumentForm(request.POST, request.FILES)
-        if form.is_valid():
-            document = form.save(commit=False)
-            document.loan = loan
-            document.uploaded_by = request.user
-            document.save()
-            messages.success(request, 'Document uploaded successfully.')
-            return redirect('loans:loans.documents', pk=loan.pk)
-    else:
-        form = LoanDocumentForm()
+        loan.status = Loan.Status.DISBURSED
+        loan.disbursement_date = timezone.now()
+        loan.maturity_date = loan.disbursement_date + timedelta(days=30 * loan.term_months)
+        loan.save()
+        
+        # Generate repayment schedule
+        loan.generate_repayment_schedule()
+        
+        messages.success(request, 'Loan disbursed successfully.')
+        return redirect('loans:loan_detail', pk=loan.pk)
     
-    documents = loan.documents.all()
-    context = {
-        'loan': loan,
-        'form': form,
-        'documents': documents,
-        'title': 'Loan Documents',
-    }
-    return render(request, 'loans/loan_documents.html', context)
-
-@login_required
-@require_http_methods(['DELETE'])
-def loan_document_delete(request, pk, doc_pk):
-    """Delete a loan document."""
-    document = get_object_or_404(LoanDocument, pk=doc_pk, loan_id=pk)
-    
-    # Only allow deletion by the uploader or staff
-    if document.uploaded_by != request.user and not request.user.is_staff:
-        raise PermissionDenied
-    
-    document.delete()
-    return JsonResponse({'status': 'success'})
-
-@login_required
-@require_http_methods(['POST'])
-def loan_delete(request, pk):
-    """Delete a loan."""
-    loan = get_object_or_404(Loan, pk=pk)
-    
-    # Check if user has permission to delete the loan
-    if not request.user.has_perm('loans.delete_loan'):
-        raise PermissionDenied
-    
-    # Only allow deletion of pending loans
-    if loan.status != Loan.Status.PENDING:
-        messages.error(request, 'Only pending loans can be deleted.')
-        return redirect('loans:loans.detail', pk=loan.pk)
-    
-    loan.delete()
-    messages.success(request, 'Loan deleted successfully.')
-    return redirect('loans:loans.list')
+    return render(request, 'loans/loan_disburse.html', {'loan': loan})
 
 @login_required
 def loan_calculator(request):
     """Loan calculator view."""
     if request.method == 'POST':
-        amount = float(request.POST.get('amount', 0))
-        term = int(request.POST.get('term', 0))
-        interest_rate = float(request.POST.get('interest_rate', 0))
+        amount = Decimal(request.POST.get('amount', 0))
+        term_months = int(request.POST.get('term_months', 0))
+        interest_rate = Decimal(request.POST.get('interest_rate', 0))
         
-        # Calculate monthly payment using the formula: PMT = P * (r * (1 + r)^n) / ((1 + r)^n - 1)
-        monthly_rate = interest_rate / (12 * 100)
-        monthly_payment = amount * (monthly_rate * (1 + monthly_rate)**term) / ((1 + monthly_rate)**term - 1)
+        # Calculate monthly payment
+        monthly_rate = interest_rate / 12 / 100
+        monthly_payment = (amount * monthly_rate * (1 + monthly_rate) ** term_months) / ((1 + monthly_rate) ** term_months - 1)
         
-        total_payment = monthly_payment * term
+        total_payment = monthly_payment * term_months
         total_interest = total_payment - amount
         
         return JsonResponse({
-            'monthly_payment': round(monthly_payment, 2),
-            'total_payment': round(total_payment, 2),
-            'total_interest': round(total_interest, 2)
+            'monthly_payment': float(monthly_payment),
+            'total_payment': float(total_payment),
+            'total_interest': float(total_interest)
         })
     
     return render(request, 'loans/loan_calculator.html')
@@ -407,13 +318,10 @@ def loan_calculator(request):
 def loan_schedule(request, pk):
     """Display loan repayment schedule."""
     loan = get_object_or_404(Loan, pk=pk)
-    
-    # Get all repayment schedules for this loan
-    schedules = loan.repayment_schedule.all().order_by('due_date')
+    schedule = loan.repayment_schedule.all().order_by('installment_number')
     
     context = {
         'loan': loan,
-        'schedules': schedules,
-        'title': 'Repayment Schedule',
+        'schedule': schedule,
     }
     return render(request, 'loans/loan_schedule.html', context)

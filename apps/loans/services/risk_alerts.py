@@ -1,15 +1,16 @@
 from datetime import timedelta
 from django.utils import timezone
-from django.db.models import Count, Q, Max
-from ..models import Loan, RiskAlert
+from django.db.models import Count, Q, F, Max
+from ..models import Loan, LoanApplication, RiskAlert
+from ..models.repayment import RepaymentSchedule
 from decimal import Decimal
 
 class RiskAlertService:
     """Service for managing risk alerts."""
     
-    def __init__(self, loan):
-        self.loan = loan
-        self.customer = loan.customer
+    def __init__(self, loan_application):
+        self.application = loan_application
+        self.customer = loan_application.customer
         
     def check_all_risk_patterns(self):
         """Check for all risk patterns and create alerts as needed."""
@@ -22,7 +23,7 @@ class RiskAlertService:
     def create_alert(self, alert_type, severity, message, details=None):
         """Create a new risk alert."""
         alert = RiskAlert.objects.create(
-            loan=self.loan,
+            loan_application=self.application,
             alert_type=alert_type,
             severity=severity,
             message=message,
@@ -37,23 +38,23 @@ class RiskAlertService:
         
     def check_high_risk_application(self):
         """Check if loan application has high risk score."""
-        if self.loan.risk_score and self.loan.risk_score < 40:
+        if self.application.risk_score and self.application.risk_score < 40:
             self.create_alert(
                 RiskAlert.AlertType.HIGH_RISK_APPLICATION,
                 RiskAlert.Severity.HIGH,
-                f"High risk loan application with score {self.loan.risk_score}",
+                f"High risk loan application with score {self.application.risk_score}",
                 {
-                    'risk_score': self.loan.risk_score,
-                    'risk_factors': self.loan.risk_factors
+                    'risk_score': self.application.risk_score,
+                    'risk_factors': self.application.risk_factors
                 }
             )
             
     def check_multiple_active_loans(self):
         """Check if customer has multiple active loans."""
         active_loans = Loan.objects.filter(
-            customer=self.customer,
-            status=Loan.Status.DISBURSED
-        ).exclude(pk=self.loan.pk)
+            application__customer=self.customer,
+            status=Loan.Status.ACTIVE
+        )
         
         active_count = active_loans.count()
         if active_count >= 2:
@@ -62,7 +63,7 @@ class RiskAlertService:
             self.create_alert(
                 RiskAlert.AlertType.MULTIPLE_LOANS,
                 severity,
-                f"Customer has {active_count} other active loans",
+                f"Customer has {active_count} active loans",
                 {
                     'active_loan_count': active_count,
                     'active_loan_ids': list(active_loans.values_list('id', flat=True))
@@ -71,12 +72,10 @@ class RiskAlertService:
             
     def check_payment_patterns(self):
         """Check for suspicious payment patterns."""
-        from apps.transactions.models import RepaymentSchedule
-        
         # Check for consistently late payments
         past_schedules = RepaymentSchedule.objects.filter(
-            loan__customer=self.customer,
-            status='PAID'
+            loan__application__customer=self.customer,
+            status=RepaymentSchedule.Status.PAID
         ).order_by('due_date')
         
         late_count = past_schedules.filter(
@@ -99,10 +98,10 @@ class RiskAlertService:
             
     def check_rapid_requests(self):
         """Check for unusually rapid loan requests."""
-        recent_applications = Loan.objects.filter(
+        recent_applications = LoanApplication.objects.filter(
             customer=self.customer,
-            application_date__gte=timezone.now() - timedelta(days=30)
-        ).exclude(pk=self.loan.pk)
+            created_at__gte=timezone.now() - timedelta(days=30)
+        ).exclude(pk=self.application.pk)
         
         if recent_applications.count() >= 2:
             self.create_alert(
@@ -111,26 +110,26 @@ class RiskAlertService:
                 f"Multiple loan applications in the past 30 days",
                 {
                     'recent_application_count': recent_applications.count(),
-                    'application_dates': list(recent_applications.values_list('application_date', flat=True))
+                    'application_dates': list(recent_applications.values_list('created_at', flat=True))
                 }
             )
             
     def check_amount_spike(self):
         """Check for unusual increases in requested loan amounts."""
         previous_max = Loan.objects.filter(
-            customer=self.customer,
-            status__in=[Loan.Status.CLOSED, Loan.Status.DISBURSED]
-        ).aggregate(max_amount=Max('amount'))['max_amount']
+            application__customer=self.customer,
+            status__in=[Loan.Status.CLOSED, Loan.Status.ACTIVE]
+        ).aggregate(max_amount=Max('amount_approved'))['max_amount']
         
-        if previous_max and self.loan.amount > previous_max * Decimal('2.0'):
+        if previous_max and self.application.amount_requested > previous_max * Decimal('2.0'):
             self.create_alert(
                 RiskAlert.AlertType.AMOUNT_SPIKE,
                 RiskAlert.Severity.HIGH,
                 f"Requested amount is more than double the previous maximum",
                 {
                     'previous_max': float(previous_max),
-                    'requested_amount': float(self.loan.amount),
-                    'increase_ratio': float(self.loan.amount / previous_max)
+                    'requested_amount': float(self.application.amount_requested),
+                    'increase_ratio': float(self.application.amount_requested / previous_max)
                 }
             )
             

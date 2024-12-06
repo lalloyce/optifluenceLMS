@@ -55,6 +55,10 @@ class UserService:
         """Create a new user account."""
         user = form_data.save(commit=False)
         user.is_active = True
+        user.email = form_data.cleaned_data['email']
+        user.first_name = form_data.cleaned_data['first_name']
+        user.last_name = form_data.cleaned_data['last_name']
+        user.set_password(form_data.cleaned_data['password1'])
         user.save()
         
         log_event(

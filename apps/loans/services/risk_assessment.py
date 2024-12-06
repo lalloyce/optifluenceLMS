@@ -1,8 +1,9 @@
 from decimal import Decimal
 from datetime import datetime, timedelta
 from django.db.models import Sum, Count, Q, F, Max
-from apps.loans.models import Loan
-from apps.transactions.models import RepaymentSchedule, Transaction
+from apps.loans.models import Loan, LoanApplication
+from apps.loans.models.repayment import RepaymentSchedule
+from apps.loans.models.transaction import Transaction
 
 class LoanRiskAssessment:
     """Service class for assessing loan risk and calculating credit scores."""
@@ -38,7 +39,7 @@ class LoanRiskAssessment:
     def _assess_payment_history(self):
         """Assess customer's payment history."""
         past_loans = Loan.objects.filter(
-            customer=self.customer,
+            application__customer=self.customer,
             status__in=[Loan.Status.CLOSED, Loan.Status.DEFAULTED]
         )
         
@@ -48,13 +49,13 @@ class LoanRiskAssessment:
         
         late_payments = RepaymentSchedule.objects.filter(
             loan__in=past_loans,
-            status='PAID',
+            status=RepaymentSchedule.Status.PAID,
             paid_date__gt=F('due_date')
         ).count()
         
         defaulted_payments = RepaymentSchedule.objects.filter(
             loan__in=past_loans,
-            status='DEFAULTED'
+            status=RepaymentSchedule.Status.DEFAULTED
         ).count()
         
         if total_payments > 0:
@@ -67,7 +68,7 @@ class LoanRiskAssessment:
         
     def _assess_loan_history(self):
         """Assess customer's loan history."""
-        past_loans = Loan.objects.filter(customer=self.customer)
+        past_loans = Loan.objects.filter(application__customer=self.customer)
         
         completed_loans = past_loans.filter(status=Loan.Status.CLOSED).count()
         defaulted_loans = past_loans.filter(status=Loan.Status.DEFAULTED).count()
@@ -94,9 +95,9 @@ class LoanRiskAssessment:
             
         # Compare with previous loans
         max_previous_loan = Loan.objects.filter(
-            customer=self.customer,
+            application__customer=self.customer,
             status=Loan.Status.CLOSED
-        ).aggregate(max_amount=Max('amount'))['max_amount'] or 0
+        ).aggregate(max_amount=Max('amount_approved'))['max_amount'] or 0
         
         if max_previous_loan == 0:
             # First time borrower
@@ -122,8 +123,8 @@ class LoanRiskAssessment:
     def _assess_active_loans(self):
         """Assess risk based on number and status of active loans."""
         active_loans = Loan.objects.filter(
-            customer=self.customer,
-            status=Loan.Status.DISBURSED
+            application__customer=self.customer,
+            status=Loan.Status.ACTIVE
         )
         
         active_count = active_loans.count()
@@ -131,7 +132,7 @@ class LoanRiskAssessment:
         # Check for late payments in active loans
         late_payments = RepaymentSchedule.objects.filter(
             loan__in=active_loans,
-            status='PENDING',
+            status=RepaymentSchedule.Status.PENDING,
             due_date__lt=datetime.now()
         ).count()
         
@@ -181,15 +182,15 @@ class LoanRiskAssessment:
             },
             'details': {
                 'completed_loans': Loan.objects.filter(
-                    customer=self.customer,
+                    application__customer=self.customer,
                     status=Loan.Status.CLOSED
                 ).count(),
                 'active_loans': Loan.objects.filter(
-                    customer=self.customer,
-                    status=Loan.Status.DISBURSED
+                    application__customer=self.customer,
+                    status=Loan.Status.ACTIVE
                 ).count(),
                 'defaulted_loans': Loan.objects.filter(
-                    customer=self.customer,
+                    application__customer=self.customer,
                     status=Loan.Status.DEFAULTED
                 ).count()
             }

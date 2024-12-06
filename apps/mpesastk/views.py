@@ -20,7 +20,7 @@ class STKPushView(LoginRequiredMixin, TemplateView):
         context['title'] = 'MPesa Payment'
         return context
 
-class STKTransactionListView(LoginRequiredMixin, BaseListView):
+class STKTransactionListView(BaseListView):
     """List all STK transactions."""
     model = STKTransaction
     template_name = 'mpesastk/transaction_list.html'
