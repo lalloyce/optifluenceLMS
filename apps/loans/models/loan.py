@@ -1,11 +1,13 @@
+from decimal import Decimal
+from dateutil.relativedelta import relativedelta
+import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.customers.models import Customer
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
-import uuid
+from .repayment import RepaymentSchedule
 from .config import LoanConfig
 
 
@@ -35,6 +37,44 @@ class LoanProduct(models.Model):
         max_digits=5,
         decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    
+    # Loan terms and fees
+    term_months = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        help_text=_('Default term length in months'),
+        default=1  # Default 1 month term
+    )
+    grace_period_months = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text=_('Grace period in months before first payment is due')
+    )
+    penalty_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text=_('Annual penalty rate for late payments'),
+        default=Decimal('10.00')  # Default 10% annual penalty rate
+    )
+    insurance_fee = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text=_('Insurance fee as percentage of loan amount'),
+        default=Decimal('0.00')  # Default 0% insurance fee
+    )
+    
+    # Documentation and eligibility
+    required_documents = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=_('List of required documents for loan application')
+    )
+    eligibility_criteria = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=_('Eligibility criteria for loan approval')
     )
     
     # Risk-based limits
@@ -132,19 +172,23 @@ class LoanApplication(models.Model):
         validators=[MinValueValidator(0)]
     )
     term_months = models.IntegerField(validators=[MinValueValidator(1)])
-    purpose = models.TextField()
+    purpose = models.TextField(null=True, blank=True)
     
     # Employment and Income Information
     employment_status = models.CharField(
         max_length=20,
         choices=EmploymentStatus.choices,
-        help_text=_('Current employment status')
+        help_text=_('Current employment status'),
+        null=True,
+        blank=True
     )
     monthly_income = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
-        help_text=_('Monthly income in base currency')
+        help_text=_('Monthly income in base currency'),
+        null=True,
+        blank=True
     )
     other_loans = models.TextField(
         blank=True,
@@ -177,6 +221,11 @@ class LoanApplication(models.Model):
     # Additional Information
     notes = models.TextField(null=True, blank=True)
     rejection_reason = models.TextField(null=True, blank=True)
+    disbursement_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=_('Requested date for loan disbursement')
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -211,9 +260,11 @@ class LoanApplication(models.Model):
     
     def approve(self):
         """Approve the application."""
-        if self.status in [self.Status.SUBMITTED, self.Status.IN_REVIEW]:
-            self.status = self.Status.APPROVED
-            self.save()
+        if self.status not in [self.Status.SUBMITTED, self.Status.IN_REVIEW]:
+            raise ValueError("Can only approve submitted or in-review applications")
+        
+        self.status = self.Status.APPROVED
+        self.save()
     
     def reject(self, reason):
         """Reject the application."""
@@ -320,7 +371,7 @@ class Loan(models.Model):
     )
     
     # Additional Information
-    purpose = models.TextField()
+    purpose = models.TextField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -341,37 +392,35 @@ class Loan(models.Model):
         
     def generate_repayment_schedule(self):
         """Generate repayment schedule for the loan."""
-        from .repayment import RepaymentSchedule
-        
-        if self.status != self.Status.DISBURSED:
-            raise ValueError("Cannot generate repayment schedule for non-disbursed loan")
+        if not self.disbursement_date:
+            raise ValueError("Cannot generate schedule without disbursement date")
             
-        # Calculate monthly payment using PMT formula
-        monthly_rate = self.interest_rate / 12 / 100
-        monthly_payment = (self.amount * monthly_rate * (1 + monthly_rate) ** self.term_months) / ((1 + monthly_rate) ** self.term_months - 1)
+        # Delete existing schedule if any
+        RepaymentSchedule.objects.filter(loan=self).delete()
         
-        remaining_principal = self.amount
-        payment_date = self.disbursement_date
+        # Calculate amounts
+        principal_per_installment = self.amount / self.term_months
         
-        for installment in range(1, self.term_months + 1):
-            payment_date = payment_date + timedelta(days=30)
-            interest_payment = remaining_principal * monthly_rate
-            principal_payment = monthly_payment - interest_payment
+        # Calculate total interest using simple interest
+        annual_rate = self.interest_rate / Decimal('100')
+        term_years = self.term_months / Decimal('12')
+        total_interest = self.amount * annual_rate * term_years
+        interest_per_installment = total_interest / self.term_months
+        
+        # Generate schedule
+        for i in range(self.term_months):
+            due_date = (self.disbursement_date + relativedelta(months=i + 1)).date()
             
-            if installment == self.term_months:
-                # Adjust last payment to account for rounding errors
-                principal_payment = remaining_principal
-                
             RepaymentSchedule.objects.create(
                 loan=self,
-                installment_number=installment,
-                due_date=payment_date.date(),
-                principal_amount=principal_payment,
-                interest_amount=interest_payment,
-                total_amount=principal_payment + interest_payment
+                installment_number=i + 1,
+                due_date=due_date,
+                principal_amount=principal_per_installment,
+                interest_amount=interest_per_installment,
+                total_amount=principal_per_installment + interest_per_installment,
+                penalty_amount=Decimal('0.00'),
+                status=RepaymentSchedule.Status.PENDING
             )
-            
-            remaining_principal -= principal_payment
     
     def update_risk_level(self):
         """Update risk level based on risk score."""
@@ -394,16 +443,31 @@ class Loan(models.Model):
         if application.status != LoanApplication.Status.APPROVED:
             raise ValueError("Can only create loan from approved application")
             
+        # Set disbursement date to today if not specified
+        if not application.disbursement_date:
+            application.disbursement_date = timezone.now()
+            application.save()
+            
         loan = cls.objects.create(
             loan_product=application.loan_product,
             customer=application.customer,
             loan_officer=loan_officer,
             application=application,
+            application_number=application.application_number,
             amount=application.amount_requested,
             term_months=application.term_months,
             interest_rate=application.loan_product.interest_rate,
             processing_fee=application.loan_product.processing_fee,
+            risk_score=getattr(application, 'risk_score', None),
+            risk_level=getattr(application, 'risk_level', None),
+            risk_factors=getattr(application, 'risk_factors', None),
+            risk_notes=getattr(application, 'risk_notes', None),
             purpose=application.purpose,
-            status=cls.Status.PENDING
+            disbursement_date=application.disbursement_date,
+            status=cls.Status.APPROVED
         )
+        
+        # Generate initial repayment schedule
+        loan.generate_repayment_schedule()
+        
         return loan

@@ -278,26 +278,24 @@ class Loan(models.Model):
         if not self.disbursement_date:
             return
 
-        # Calculate monthly payment using PMT formula
-        monthly_rate = self.interest_rate / 12 / 100
-        monthly_payment = -1 * npf.pmt(monthly_rate, self.term_months, self.amount)
+        # Calculate simple interest
+        annual_rate = self.interest_rate / 100
+        total_interest = self.amount * annual_rate * (self.term_months / 12)
+        
+        # Calculate monthly amounts
+        monthly_principal = self.amount / self.term_months
+        monthly_interest = total_interest / self.term_months
 
         # Generate schedule
         current_date = self.disbursement_date
-        remaining_principal = self.amount
-
         for installment in range(1, self.term_months + 1):
-            interest_payment = remaining_principal * monthly_rate
-            principal_payment = monthly_payment - interest_payment
-            remaining_principal -= principal_payment
-
             RepaymentSchedule.objects.create(
                 loan=self,
                 installment_number=installment,
                 due_date=current_date + timedelta(days=30 * installment),
-                principal_amount=principal_payment,
-                interest_amount=interest_payment,
-                total_amount=monthly_payment
+                principal_amount=monthly_principal,
+                interest_amount=monthly_interest,
+                total_amount=monthly_principal + monthly_interest
             )
 
     def save(self, *args, **kwargs):

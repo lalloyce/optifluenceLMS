@@ -2,7 +2,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from django.utils import timezone
-from .loan import Loan
 
 
 class RepaymentSchedule(models.Model):
@@ -15,9 +14,9 @@ class RepaymentSchedule(models.Model):
         OVERDUE = 'OVERDUE', _('Overdue')
     
     loan = models.ForeignKey(
-        Loan,
+        'loans.Loan',
         on_delete=models.CASCADE,
-        related_name='loan_repayment_schedule'
+        related_name='repayment_schedule'
     )
     installment_number = models.IntegerField()
     due_date = models.DateField()
