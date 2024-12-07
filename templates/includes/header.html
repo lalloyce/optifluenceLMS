@@ -11,10 +11,13 @@
                         <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'loans:list' %}">Loans</a>
+                        <a class="nav-link" href="{% url 'web_loans:list' %}">Loans</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'customers:list' %}">Customers</a>
+                        <a class="nav-link" href="{% url 'web_customers:list' %}">Customers</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'web_transactions:list' %}">Transactions</a>
                     </li>
                 {% endif %}
             </ul>

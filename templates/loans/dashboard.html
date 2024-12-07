@@ -33,13 +33,13 @@
                 </div>
                 <!-- Action Buttons -->
                 <div class="btn-group" role="group">
-                    <a href="{% url 'loans:create' %}" class="btn btn-primary">
+                    <a href="{% url 'web_loans:create' %}" class="btn btn-primary">
                         <i class="fas fa-plus-circle me-2"></i>New Loan
                     </a>
-                    <a href="{% url 'transactions:record_payment' %}" class="btn btn-success">
+                    <a href="{% url 'web_transactions:record_payment' %}" class="btn btn-success">
                         <i class="fas fa-money-bill-wave me-2"></i>Record Payment
                     </a>
-                    <a href="{% url 'customers:create' %}" class="btn btn-info">
+                    <a href="{% url 'web_customers:create' %}" class="btn btn-info">
                         <i class="fas fa-user-plus me-2"></i>New Customer
                     </a>
                 </div>
@@ -168,7 +168,7 @@
                             <tbody>
                                 {% for borrower in top_borrowers %}
                                 <tr>
-                                    <td><a href="{% url 'loans:loans.detail' borrower.id %}">{{ borrower.first_name }} {{ borrower.last_name }}</a></td>
+                                    <td><a href="{% url 'web_loans:loans.detail' borrower.id %}">{{ borrower.first_name }} {{ borrower.last_name }}</a></td>
                                     <td>{{ borrower.loan_count_all_time }}</td>
                                     <td>{{ borrower.total_all_time|floatformat:2|intcomma }}</td>
                                 </tr>
@@ -204,7 +204,7 @@
                             <tbody>
                                 {% for loan in recent_loans %}
                                 <tr>
-                                    <td><a href="{% url 'loans:detail' loan.pk %}">{{ loan.application_number }}</a></td>
+                                    <td><a href="{% url 'web_loans:detail' loan.pk %}">{{ loan.application_number }}</a></td>
                                     <td>{{ loan.customer.get_full_name }}</td>
                                     <td>${{ loan.amount|floatformat:2|intcomma }}</td>
                                     <td><span class="badge bg-{{ loan.get_status_color }}">{{ loan.get_status_display }}</span></td>
@@ -254,7 +254,7 @@
                                 {% for payment in upcoming_payments %}
                                 <tr>
                                     <td>{{ payment.due_date|date:"M d, Y" }}</td>
-                                    <td><a href="{% url 'loans:detail' payment.loan.pk %}">{{ payment.loan.application_number }}</a></td>
+                                    <td><a href="{% url 'web_loans:detail' payment.loan.pk %}">{{ payment.loan.application_number }}</a></td>
                                     <td>{{ payment.loan.customer.get_full_name }}</td>
                                     <td>${{ payment.total_amount|floatformat:2|intcomma }}</td>
                                 </tr>
@@ -288,7 +288,7 @@
                                 {% for payment in overdue_payments %}
                                 <tr>
                                     <td>{{ payment.due_date|date:"M d, Y" }}</td>
-                                    <td><a href="{% url 'loans:detail' payment.loan.pk %}">{{ payment.loan.application_number }}</a></td>
+                                    <td><a href="{% url 'web_loans:detail' payment.loan.pk %}">{{ payment.loan.application_number }}</a></td>
                                     <td>{{ payment.loan.customer.get_full_name }}</td>
                                     <td>${{ payment.total_amount|floatformat:2|intcomma }}</td>
                                     <td>{{ payment.days_late }}</td>

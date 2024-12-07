@@ -1,0 +1,256 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Loan Details - {{ loan.application_number }} - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Loan Details</h2>
+                <div>
+                    <a href="{% url 'web_loans:list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Information -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Application Number</dt>
+                                <dd class="col-sm-7">{{ loan.application_number }}</dd>
+
+                                <dt class="col-sm-5">Customer</dt>
+                                <dd class="col-sm-7">
+                                    <a href="{% url 'web_customers:detail' loan.customer.pk %}">
+                                        {{ loan.customer.get_full_name }}
+                                    </a>
+                                </dd>
+
+                                <dt class="col-sm-5">Loan Product</dt>
+                                <dd class="col-sm-7">{{ loan.loan_product.name }}</dd>
+
+                                <dt class="col-sm-5">Amount</dt>
+                                <dd class="col-sm-7">${{ loan.amount|floatformat:2 }}</dd>
+
+                                <dt class="col-sm-5">Term</dt>
+                                <dd class="col-sm-7">{{ loan.term_months }} months</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Status</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge bg-{{ loan.get_status_color }}">
+                                        {{ loan.get_status_display }}
+                                    </span>
+                                </dd>
+
+                                <dt class="col-sm-5">Application Date</dt>
+                                <dd class="col-sm-7">{{ loan.created_at|date:"M d, Y" }}</dd>
+
+                                <dt class="col-sm-5">Loan Officer</dt>
+                                <dd class="col-sm-7">{{ loan.loan_officer.get_full_name }}</dd>
+
+                                <dt class="col-sm-5">Risk Score</dt>
+                                <dd class="col-sm-7">{{ loan.risk_score|default:"N/A" }}</dd>
+
+                                <dt class="col-sm-5">Interest Rate</dt>
+                                <dd class="col-sm-7">{{ loan.interest_rate|floatformat:2 }}%</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if loan.purpose %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Loan Purpose</h6>
+                            <p class="text-muted">{{ loan.purpose }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if loan.notes %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Notes</h6>
+                            <p class="text-muted">{{ loan.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Repayment Schedule -->
+            {% if repayment_schedule %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Repayment Schedule</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Due Date</th>
+                                    <th>Principal</th>
+                                    <th>Interest</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for installment in repayment_schedule %}
+                                <tr>
+                                    <td>{{ installment.installment_number }}</td>
+                                    <td>{{ installment.due_date|date:"M d, Y" }}</td>
+                                    <td>${{ installment.principal_amount|floatformat:2 }}</td>
+                                    <td>${{ installment.interest_amount|floatformat:2 }}</td>
+                                    <td>${{ installment.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ installment.get_status_color }}">
+                                            {{ installment.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Action Sidebar -->
+        <div class="col-md-4">
+            {% if loan.status == 'PENDING' %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+                            <i class="fas fa-check me-2"></i>Approve Loan
+                        </button>
+                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fas fa-times me-2"></i>Reject Loan
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if loan.status == 'APPROVED' %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid">
+                        <a href="{% url 'web_loans:disburse' loan.pk %}" class="btn btn-primary">
+                            <i class="fas fa-money-bill-wave me-2"></i>Disburse Loan
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Loan Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Loan Summary</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-7">Principal Amount</dt>
+                        <dd class="col-sm-5 text-end">${{ loan.amount|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-7">Interest Rate</dt>
+                        <dd class="col-sm-5 text-end">{{ loan.interest_rate|floatformat:2 }}%</dd>
+
+                        <dt class="col-sm-7">Total Interest</dt>
+                        <dd class="col-sm-5 text-end">${{ loan.total_interest|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-7">Processing Fee</dt>
+                        <dd class="col-sm-5 text-end">${{ loan.processing_fee|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-7">Monthly Payment</dt>
+                        <dd class="col-sm-5 text-end">${{ loan.monthly_payment|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-7 fw-bold">Total Repayment</dt>
+                        <dd class="col-sm-5 text-end fw-bold">${{ loan.total_repayment|floatformat:2 }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Approve Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'web_loans:approve' loan.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Are you sure you want to approve this loan application?</p>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Approve</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'web_loans:reject' loan.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Are you sure you want to reject this loan application?</p>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

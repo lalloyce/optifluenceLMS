@@ -143,13 +143,13 @@ class Customer(models.Model):
         return self.customer_type == self.CustomerType.BUSINESS
 
     def get_active_loans(self):
-        return self.loan_set.filter(status='ACTIVE')
+        return self.loans.filter(status='DISBURSED')
 
     def get_loan_history(self):
-        return self.loan_set.all().order_by('-created_at')
+        return self.loans.all().order_by('-created_at')
 
     def get_total_loan_amount(self):
-        return sum(loan.amount for loan in self.loan_set.all())
+        return sum(loan.amount for loan in self.loans.all())
 
     def get_total_outstanding_amount(self):
         return sum(loan.get_outstanding_amount() for loan in self.get_active_loans())

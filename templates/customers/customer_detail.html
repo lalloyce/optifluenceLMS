@@ -1,0 +1,204 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ customer.get_full_name }} - Customer Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Customer Overview Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Customer Details</h5>
+                <div>
+                    <a href="{% url 'web_customers:edit' customer.id %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-edit me-2"></i>Edit
+                    </a>
+                    <a href="{% url 'web_customers:list' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Basic Information -->
+                <div class="col-md-6">
+                    <h6 class="text-primary">Basic Information</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="30%">Full Name</th>
+                            <td>{{ customer.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Customer Type</th>
+                            <td>{{ customer.get_customer_type_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>ID Number</th>
+                            <td>{{ customer.id_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Phone</th>
+                            <td>{{ customer.phone_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email</th>
+                            <td>{{ customer.email }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- Financial Summary -->
+                <div class="col-md-6">
+                    <h6 class="text-primary">Financial Summary</h6>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Total Loans</h6>
+                                    <h3 class="card-text">{{ loans.count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Active Loans</h6>
+                                    <h3 class="card-text">{{ customer.get_active_loans.count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Total Borrowed</h6>
+                                    <h3 class="card-text">KES {{ customer.get_total_loan_amount|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Outstanding</h6>
+                                    <h3 class="card-text">KES {{ customer.get_total_outstanding_amount|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loans and Guarantees -->
+    <div class="row">
+        <!-- Active Loans -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Active Loans</h5>
+                </div>
+                <div class="card-body">
+                    {% if loans %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Loan #</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for loan in loans %}
+                                    <tr>
+                                        <td>{{ loan.application_number }}</td>
+                                        <td>KES {{ loan.amount|intcomma }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ loan.status|lower }}">
+                                                {{ loan.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'web_loans:detail' loan.id %}" 
+                                               class="btn btn-sm btn-primary">
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No active loans found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Guaranteed Loans -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Guaranteed Loans</h5>
+                </div>
+                <div class="card-body">
+                    {% if guaranteed_loans %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Loan #</th>
+                                        <th>Borrower</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for guarantee in guaranteed_loans %}
+                                    <tr>
+                                        <td>{{ guarantee.loan.application_number }}</td>
+                                        <td>{{ guarantee.loan.customer.get_full_name }}</td>
+                                        <td>KES {{ guarantee.guarantee_amount|intcomma }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ guarantee.status|lower }}">
+                                                {{ guarantee.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No guaranteed loans found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-pending { background-color: #ffc107; }
+.bg-approved { background-color: #28a745; }
+.bg-rejected { background-color: #dc3545; }
+.bg-disbursed { background-color: #17a2b8; }
+.bg-closed { background-color: #6c757d; }
+.bg-defaulted { background-color: #dc3545; }
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

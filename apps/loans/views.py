@@ -9,11 +9,26 @@ from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
 
 from .models import Loan, LoanProduct, LoanApplication
-from .forms import LoanApplicationForm, LoanApprovalForm
+from .forms import LoanForm, LoanApprovalForm
 from apps.customers.models import Customer
 import json
 from decimal import Decimal
 from datetime import timedelta, datetime
+
+def generate_application_number():
+    """Generate a unique loan application number."""
+    prefix = timezone.now().strftime('%Y%m')
+    last_loan = Loan.objects.filter(
+        application_number__startswith=prefix
+    ).order_by('-application_number').first()
+    
+    if last_loan:
+        last_number = int(last_loan.application_number[-4:])
+        new_number = str(last_number + 1).zfill(4)
+    else:
+        new_number = '0001'
+    
+    return f"{prefix}{new_number}"
 
 @login_required
 def loan_dashboard(request):
@@ -139,15 +154,17 @@ def dashboard(request):
 def loan_application(request):
     """Handle new loan applications."""
     if request.method == 'POST':
-        form = LoanApplicationForm(request.POST)
+        form = LoanForm(request.POST)
         if form.is_valid():
-            application = form.save(commit=False)
-            application.status = LoanApplication.Status.SUBMITTED
-            application.save()
+            loan = form.save(commit=False)
+            loan.loan_officer = request.user
+            loan.application_number = generate_application_number()
+            loan.status = Loan.Status.PENDING
+            loan.save()
             messages.success(request, 'Loan application submitted successfully.')
-            return redirect('loans:application_detail', pk=application.pk)
+            return redirect('web_loans:detail', pk=loan.pk)
     else:
-        form = LoanApplicationForm()
+        form = LoanForm()
     
     context = {
         'form': form,
@@ -207,7 +224,7 @@ def application_detail(request, pk):
             application.approve()
             loan = Loan.create_from_application(application, request.user)
             messages.success(request, 'Loan application approved successfully.')
-            return redirect('loans:loan_detail', pk=loan.pk)
+            return redirect('web_loans:detail', pk=loan.pk)
         elif action == 'reject':
             reason = request.POST.get('rejection_reason')
             application.reject(reason)
@@ -237,7 +254,7 @@ def loan_approve(request, pk):
             loan.approval_date = timezone.now()
             loan.save()
             messages.success(request, 'Loan approved successfully.')
-            return redirect('loans:loan_detail', pk=loan.pk)
+            return redirect('web_loans:detail', pk=loan.pk)
     else:
         form = LoanApprovalForm(instance=loan)
     
@@ -261,7 +278,7 @@ def loan_reject(request, pk):
         loan.notes = (loan.notes or '') + f"\nRejection Reason: {reason}"
         loan.save()
         messages.success(request, 'Loan rejected successfully.')
-        return redirect('loans:loan_detail', pk=loan.pk)
+        return redirect('web_loans:detail', pk=loan.pk)
     
     return render(request, 'loans/loan_reject.html', {'loan': loan})
 
@@ -275,7 +292,7 @@ def loan_disburse(request, pk):
         
     if loan.status != Loan.Status.APPROVED:
         messages.error(request, 'Only approved loans can be disbursed.')
-        return redirect('loans:loan_detail', pk=loan.pk)
+        return redirect('web_loans:detail', pk=loan.pk)
         
     if request.method == 'POST':
         loan.status = Loan.Status.DISBURSED
@@ -287,7 +304,7 @@ def loan_disburse(request, pk):
         loan.generate_repayment_schedule()
         
         messages.success(request, 'Loan disbursed successfully.')
-        return redirect('loans:loan_detail', pk=loan.pk)
+        return redirect('web_loans:detail', pk=loan.pk)
     
     return render(request, 'loans/loan_disburse.html', {'loan': loan})
 

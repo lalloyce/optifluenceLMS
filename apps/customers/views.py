@@ -166,9 +166,9 @@ def customer_detail(request, pk):
     insights = CustomerService.get_customer_insights(customer)
     
     # Get loans and guarantor information
-    loans = customer.loan_set.all().order_by('-created_at')
-    guaranteed_loans = customer.guarantees_given.select_related('loan', 'loan__borrower').order_by('-loan__created_at')
-    loan_guarantors = customer.loan_set.first().guarantees.select_related('guarantor') if customer.loan_set.exists() else []
+    loans = customer.loans.all().order_by('-created_at')
+    guaranteed_loans = customer.guaranteed_loans.select_related('loan', 'loan__customer').order_by('-created_at')
+    loan_guarantors = customer.loans.first().guarantors.select_related('guarantor') if customer.loans.exists() else []
     
     # Update recommendations if needed
     if not customer.recommendation_score or \

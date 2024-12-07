@@ -3,39 +3,35 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
-from .models import LoanApplication, LoanProduct
+from .models import Loan, LoanProduct
 from apps.customers.models import Customer
 from .services.risk_assessment import LoanRiskAssessment
 from decimal import Decimal
 
-class LoanApplicationForm(forms.ModelForm):
-    """Form for loan applications."""
+class LoanForm(forms.ModelForm):
+    """Form for loans."""
     
     class Meta:
-        model = LoanApplication
+        model = Loan
         fields = [
             'loan_product',
             'customer',
-            'amount_requested',
+            'amount',
             'term_months',
             'purpose',
-            'employment_status',
-            'monthly_income',
-            'other_loans',
         ]
         widgets = {
             'purpose': forms.Textarea(attrs={'rows': 3}),
-            'other_loans': forms.Textarea(attrs={'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.risk_assessment = None
         
-        if self.is_bound and self.data.get('customer') and self.data.get('amount_requested'):
+        if self.is_bound and self.data.get('customer') and self.data.get('amount'):
             try:
                 customer = Customer.objects.get(pk=self.data['customer'])
-                amount = Decimal(self.data['amount_requested'])
+                amount = Decimal(self.data['amount'])
                 self.risk_assessment = LoanRiskAssessment(customer, amount)
                 self.risk_summary = self.risk_assessment.get_risk_assessment_summary()
             except (Customer.DoesNotExist, ValueError):
@@ -44,7 +40,7 @@ class LoanApplicationForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         loan_product = cleaned_data.get('loan_product')
-        amount = cleaned_data.get('amount_requested')
+        amount = cleaned_data.get('amount')
         term_months = cleaned_data.get('term_months')
         customer = cleaned_data.get('customer')
         
@@ -97,37 +93,37 @@ class LoanApplicationForm(forms.ModelForm):
         return cleaned_data
     
     def save(self, commit=True):
-        application = super().save(commit=False)
-        loan_product = application.loan_product
+        loan = super().save(commit=False)
+        loan_product = loan.loan_product
         
         # Store risk assessment results
         if hasattr(self, 'risk_assessment'):
-            application.risk_score = self.risk_assessment.score
-            application.risk_factors = self.risk_assessment.risk_factors
+            loan.risk_score = self.risk_assessment.score
+            loan.risk_factors = self.risk_assessment.risk_factors
             
             # Set initial status based on auto-approval threshold
-            if application.risk_score >= loan_product.auto_approve_above:
-                application.status = LoanApplication.Status.AUTO_APPROVED
-                application.decision_date = timezone.now()
+            if loan.risk_score >= loan_product.auto_approve_above:
+                loan.status = Loan.Status.AUTO_APPROVED
+                loan.decision_date = timezone.now()
             
         if commit:
-            application.save()
+            loan.save()
             
             # Create risk alerts
             from .services.risk_alerts import RiskAlertService
-            alert_service = RiskAlertService(application)
+            alert_service = RiskAlertService(loan)
             alert_service.check_all_risk_patterns()
             
-        return application
+        return loan
 
 
 class LoanApprovalForm(forms.Form):
     """Form for loan approval."""
     
     decision = forms.ChoiceField(
-        choices=LoanApplication.Status.choices,
+        choices=Loan.Status.choices,
         required=True,
-        help_text=_('Select the approval decision for this loan application.')
+        help_text=_('Select the approval decision for this loan.')
     )
     
     approved_amount = forms.DecimalField(
@@ -152,7 +148,7 @@ class LoanApprovalForm(forms.Form):
         approved_amount = cleaned_data.get('approved_amount')
         interest_rate = cleaned_data.get('interest_rate')
         
-        if decision == LoanApplication.Status.APPROVED:
+        if decision == Loan.Status.APPROVED:
             if not approved_amount:
                 raise ValidationError(_('Approved amount is required for approved loans.'))
             if not interest_rate:
