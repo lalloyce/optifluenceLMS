@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="50" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .text { font-family: Arial, sans-serif; font-size: 24px; font-weight: bold; }
+        .blue { fill: #007bff; }
+        .gray { fill: #6c757d; }
+    </style>
+    <text x="10" y="35" class="text blue">Optifluence</text>
+    <text x="140" y="35" class="text gray">LMS</text>
+</svg>
