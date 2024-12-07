@@ -11,6 +11,12 @@ from decimal import Decimal
 class LoanForm(forms.ModelForm):
     """Form for loans."""
     
+    guarantor = forms.ModelChoiceField(
+        queryset=Customer.objects.all(),
+        required=False,
+        empty_label="Select a guarantor (optional)"
+    )
+    
     class Meta:
         model = Loan
         fields = [
@@ -19,6 +25,7 @@ class LoanForm(forms.ModelForm):
             'amount',
             'term_months',
             'purpose',
+            'guarantor',
         ]
         widgets = {
             'purpose': forms.Textarea(attrs={'rows': 3}),
@@ -26,6 +33,9 @@ class LoanForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['loan_product'].queryset = LoanProduct.objects.filter(is_active=True)
+        self.fields['loan_product'].empty_label = "Select a loan product"
+        self.fields['customer'].empty_label = "Select a customer"
         self.risk_assessment = None
         
         if self.is_bound and self.data.get('customer') and self.data.get('amount'):

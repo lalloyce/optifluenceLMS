@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
 
-from .models import Loan, LoanProduct, LoanApplication
+from .models import Loan, LoanProduct, LoanApplication, LoanGuarantor
 from .forms import LoanForm, LoanApprovalForm
 from apps.customers.models import Customer
 import json
@@ -160,6 +160,18 @@ def loan_application(request):
             loan.loan_officer = request.user
             loan.application_number = generate_application_number()
             loan.status = Loan.Status.PENDING
+            
+            # Handle guarantor if provided
+            guarantor = form.cleaned_data.get('guarantor')
+            if guarantor:
+                loan_guarantor = LoanGuarantor(
+                    loan=loan,
+                    guarantor=guarantor,
+                    guarantee_amount=loan.amount,  # You might want to adjust this
+                    status='PENDING'
+                )
+                loan_guarantor.save()
+            
             loan.save()
             messages.success(request, 'Loan application submitted successfully.')
             return redirect('web_loans:detail', pk=loan.pk)
@@ -169,6 +181,7 @@ def loan_application(request):
     context = {
         'form': form,
         'loan_products': LoanProduct.objects.filter(is_active=True),
+        'customers': Customer.objects.all()  # For guarantor selection
     }
     return render(request, 'loans/loan_application.html', context)
 
