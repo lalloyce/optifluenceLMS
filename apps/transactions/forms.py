@@ -1,5 +1,7 @@
 from django import forms
+from django.utils import timezone
 from .models import Transaction
+from apps.customers.models import Customer
 from apps.loans.models import Loan
 
 class TransactionForm(forms.ModelForm):
@@ -8,23 +10,51 @@ class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
         fields = [
+            'customer',
             'loan',
-            'transaction_type',
             'amount',
+            'transaction_type',
+            'transaction_date',
             'reference_number',
-            'description',
-            'status'
+            'notes'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'customer': forms.Select(attrs={'class': 'form-control select2', 'data-placeholder': 'Select Customer'}),
+            'loan': forms.Select(attrs={'class': 'form-control select2', 'data-placeholder': 'Select Loan'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter amount'}),
+            'transaction_type': forms.Select(attrs={'class': 'form-control select2', 'data-placeholder': 'Select Transaction Type'}),
+            'transaction_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'reference_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter reference number (optional)'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter any additional notes (optional)'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show active loans in the dropdown
-        self.fields['loan'].queryset = Loan.objects.filter(
-            status__in=[Loan.Status.DISBURSED, Loan.Status.DEFAULTED]
-        )
+        # Set initial transaction date to now
+        self.fields['transaction_date'].initial = timezone.now()
+        
+        # Initialize customer queryset
+        self.fields['customer'].queryset = Customer.objects.filter(is_active=True)
+        
+        # Make loan field dependent on customer selection
+        if not self.is_bound:  # If form is not submitted
+            self.fields['loan'].queryset = Loan.objects.none()
+        
+        if 'customer' in self.data:
+            try:
+                customer_id = int(self.data.get('customer'))
+                self.fields['loan'].queryset = Loan.objects.filter(
+                    customer_id=customer_id,
+                    status='DISBURSED'
+                ).select_related('customer')
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.customer:
+            # If editing an existing transaction, show loans for the selected customer
+            self.fields['loan'].queryset = Loan.objects.filter(
+                customer=self.instance.customer,
+                status='DISBURSED'
+            ).select_related('customer')
     
     def clean_amount(self):
         """Validate transaction amount."""

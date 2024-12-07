@@ -1,70 +1,72 @@
 """Transaction views."""
-from django.urls import reverse_lazy
-from django.shortcuts import redirect
-from django.contrib import messages
-from django.views.generic import DetailView, ListView, CreateView
+from django.shortcuts import render
+from django.views.generic import ListView, CreateView, DetailView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from apps.core.views import (
-    BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
-)
+from django.urls import reverse_lazy
+from django.http import JsonResponse
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Transaction
 from .forms import TransactionForm
-from .services import TransactionService
+from apps.loans.models import Loan
+from django.contrib import messages
+from django.utils import timezone
 
-@method_decorator(login_required, name='dispatch')
-class TransactionListView(ListView):
+class TransactionListView(LoginRequiredMixin, ListView):
     """List all transactions with search and filtering."""
     model = Transaction
     template_name = 'transactions/transaction_list.html'
     context_object_name = 'transactions'
-    title = 'Transaction List'
     paginate_by = 10
-    
-    def get_queryset(self):
-        """Get transactions queryset."""
-        search_query = self.request.GET.get('q', '')
-        transactions = super().get_queryset().select_related(
-            'loan', 'processed_by'
-        ).order_by('-transaction_date')
-        
-        if search_query:
-            transactions = transactions.filter(
-                Q(reference_number__icontains=search_query) |
-                Q(loan__application_number__icontains=search_query) |
-                Q(loan__customer__full_name__icontains=search_query)
-            )
-        
-        return transactions
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['search_query'] = self.request.GET.get('q', '')
-        return context
+    ordering = ['-transaction_date']
 
-@method_decorator(login_required, name='dispatch')
-class TransactionCreateView(CreateView):
+class TransactionCreateView(LoginRequiredMixin, CreateView):
     """Create a new transaction."""
     model = Transaction
     form_class = TransactionForm
     template_name = 'transactions/transaction_form.html'
-    title = 'Record New Transaction'
-    
+    success_url = reverse_lazy('web_transactions:list')
+
     def form_valid(self, form):
         """Process valid form."""
-        try:
-            transaction = TransactionService.create_transaction(
-                loan=form.cleaned_data['loan'],
-                amount=form.cleaned_data['amount'],
-                transaction_type=form.cleaned_data['transaction_type'],
-                user=self.request.user,
-                description=form.cleaned_data.get('description')
-            )
-            messages.success(self.request, 'Transaction recorded successfully.')
-            return redirect('transactions:detail', pk=transaction.pk)
-        except Exception as e:
-            messages.error(self.request, f'Error creating transaction: {str(e)}')
-            return self.form_invalid(form)
+        form.instance.processed_by = self.request.user
+        form.instance.status = 'COMPLETED'  # Auto-complete the transaction
+        response = super().form_valid(form)
+        
+        # Add success message
+        messages.success(self.request, 'Transaction recorded successfully.')
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Record Transaction'
+        return context
+
+@login_required
+def load_loans(request):
+    """AJAX view to load loans for a selected customer."""
+    customer_id = request.GET.get('customer_id')
+    print(f"Loading loans for customer ID: {customer_id}")
+    
+    if customer_id:
+        loans = Loan.objects.filter(
+            customer_id=customer_id,
+            status='DISBURSED'
+        ).select_related('customer')
+        
+        print(f"Found {loans.count()} disbursed loans")
+        
+        loan_data = [
+            {
+                'id': loan.id,
+                'text': f'Loan #{loan.id} - KES {loan.amount:,.2f}'
+            }
+            for loan in loans
+        ]
+        print(f"Loan data: {loan_data}")
+        
+        return JsonResponse({'loans': loan_data})
+    return JsonResponse({'loans': []})
 
 @method_decorator(login_required, name='dispatch')
 class TransactionDetailView(DetailView):
@@ -72,7 +74,12 @@ class TransactionDetailView(DetailView):
     model = Transaction
     template_name = 'transactions/transaction_detail.html'
     context_object_name = 'transaction'
-    
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = f'Transaction Details - {self.object.reference_number}'
+        return context
+
     def get_title(self):
         """Get page title."""
         return f'Transaction: {self.object.reference_number}'
