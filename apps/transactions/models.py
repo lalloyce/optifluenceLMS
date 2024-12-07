@@ -1,19 +1,25 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.conf import settings
 from apps.loans.models import Loan
+from apps.customers.models import Customer
 
 
 class Transaction(models.Model):
     """Model for tracking all financial transactions."""
     
     class TransactionType(models.TextChoices):
+        MOBILE_MONEY = 'MOBILE_MONEY', _('Mobile Money')
+        BANK_TRANSFER = 'BANK_TRANSFER', _('Bank Transfer')
+        CASH = 'CASH', _('Cash')
+        CHECK = 'CHECK', _('Check')
+        OTHER = 'OTHER', _('Other')
         DISBURSEMENT = 'DISBURSEMENT', _('Loan Disbursement')
         REPAYMENT = 'REPAYMENT', _('Loan Repayment')
         PENALTY = 'PENALTY', _('Late Payment Penalty')
         FEE = 'FEE', _('Processing Fee')
-        OTHER = 'OTHER', _('Other')
     
     class Status(models.TextChoices):
         PENDING = 'PENDING', _('Pending')
@@ -21,10 +27,17 @@ class Transaction(models.Model):
         FAILED = 'FAILED', _('Failed')
         REVERSED = 'REVERSED', _('Reversed')
     
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name='transactions',
+        null=True,  # Allow null initially
+        blank=True
+    )
     loan = models.ForeignKey(
         Loan,
         on_delete=models.PROTECT,
-        related_name='transaction_records'
+        related_name='transactions'
     )
     transaction_type = models.CharField(
         max_length=20,
@@ -40,9 +53,9 @@ class Transaction(models.Model):
         choices=Status.choices,
         default=Status.PENDING
     )
-    transaction_date = models.DateTimeField(auto_now_add=True)
-    reference_number = models.CharField(max_length=50, unique=True)
-    description = models.TextField(null=True, blank=True)
+    transaction_date = models.DateTimeField(default=timezone.now)
+    reference_number = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True)
     processed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -57,18 +70,22 @@ class Transaction(models.Model):
         ordering = ['-transaction_date']
     
     def __str__(self):
-        return f"{self.reference_number} - {self.get_transaction_type_display()}"
+        return f"{self.get_transaction_type_display()} - {self.amount} - {self.customer}"
 
     def get_transaction_type_color(self):
         """Get the Bootstrap color class for the transaction type."""
-        type_colors = {
+        color_map = {
+            self.TransactionType.MOBILE_MONEY: 'success',
+            self.TransactionType.BANK_TRANSFER: 'primary',
+            self.TransactionType.CASH: 'info',
+            self.TransactionType.CHECK: 'warning',
             self.TransactionType.DISBURSEMENT: 'success',
             self.TransactionType.REPAYMENT: 'primary',
             self.TransactionType.PENALTY: 'danger',
-            self.TransactionType.FEE: 'warning',
             self.TransactionType.OTHER: 'secondary',
+            self.TransactionType.FEE: 'warning',
         }
-        return type_colors.get(self.transaction_type, 'secondary')
+        return color_map.get(self.transaction_type, 'secondary')
 
     def get_status_color(self):
         """Get the Bootstrap color class for the transaction status."""
