@@ -7,96 +7,142 @@ from django.utils import timezone
 from datetime import timedelta
 import uuid
 import numpy_financial as npf
+from model_utils.models import TimeStampedModel
+from decimal import Decimal
+from django.core.exceptions import ValidationError
 
 
-class LoanProduct(models.Model):
-    """Model for different types of loan products."""
+class LoanProduct(TimeStampedModel):
+    """Model for different types of loans offered."""
     
     name = models.CharField(max_length=100)
-    description = models.TextField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    term_months = models.PositiveIntegerField(help_text="Loan term in months")
     interest_rate = models.DecimalField(
-        max_digits=5,
+        max_digits=5, 
         decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
+        help_text="Annual interest rate as a percentage"
+    )
+    penalty_rate = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        help_text="Annual penalty rate as a percentage"
+    )
+    grace_period_months = models.PositiveIntegerField(
+        default=0,
+        help_text="Grace period in months before first payment is due"
+    )
+    processing_fee = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        help_text="One-time processing fee as a percentage of loan amount",
+        default=0
+    )
+    insurance_fee = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        help_text="Insurance fee as a percentage of loan amount",
+        default=0
     )
     minimum_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0)]
+        help_text="Minimum loan amount allowed"
     )
     maximum_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0)]
+        help_text="Maximum loan amount allowed"
     )
-    minimum_term = models.IntegerField()
-    maximum_term = models.IntegerField()
-    processing_fee = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    required_documents = models.TextField(
+        blank=True,
+        help_text="List of required documents (one per line)"
     )
+    eligibility_criteria = models.TextField(
+        blank=True,
+        help_text="Eligibility requirements (one per line)"
+    )
+    is_active = models.BooleanField(default=True)
     
-    # Risk-based limits
+    # Risk-based limits with defaults
+    minimum_term = models.PositiveIntegerField(
+        default=1,
+        help_text="Minimum loan term in months"
+    )
+    maximum_term = models.PositiveIntegerField(
+        default=60,
+        help_text="Maximum loan term in months"
+    )
     high_risk_max_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
         default=0,
-        help_text=_('Maximum amount for high-risk loans (score < 40)')
+        help_text=_('Maximum amount for high risk customers (risk score < 50)')
     )
     medium_risk_max_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
         default=0,
-        help_text=_('Maximum amount for medium-risk loans (score 40-59)')
+        help_text=_('Maximum amount for medium risk customers (risk score 50-79)')
     )
     moderate_risk_max_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
         default=0,
-        help_text=_('Maximum amount for moderate-risk loans (score 60-79)')
+        help_text=_('Maximum amount for moderate risk customers (risk score >= 80)')
     )
-    
-    # Risk thresholds for automatic approval/rejection
-    auto_reject_below = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        default=30,
-        help_text=_('Automatically reject loans with risk score below this value')
-    )
-    auto_approve_above = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    auto_approval_min_score = models.IntegerField(
         default=80,
         help_text=_('Automatically approve loans with risk score above this value')
     )
-    
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = _('loan product')
         verbose_name_plural = _('loan products')
     
     def __str__(self):
         return self.name
-    
-    def get_max_amount_for_risk_score(self, risk_score):
-        """Get maximum allowed amount based on risk score."""
-        if risk_score >= 80:
-            return self.maximum_amount
-        elif risk_score >= 60:
-            return self.moderate_risk_max_amount
-        elif risk_score >= 40:
-            return self.medium_risk_max_amount
-        else:
-            return self.high_risk_max_amount
+
+    @property
+    def interest_rate_decimal(self):
+        """Convert interest rate percentage to decimal."""
+        return float(self.interest_rate) / 100
+
+    @property
+    def penalty_rate_decimal(self):
+        """Convert penalty rate percentage to decimal."""
+        return float(self.penalty_rate) / 100
+
+    @property
+    def processing_fee_decimal(self):
+        """Convert processing fee percentage to decimal."""
+        return float(self.processing_fee) / 100
+
+    @property
+    def insurance_fee_decimal(self):
+        """Convert insurance fee percentage to decimal."""
+        return float(self.insurance_fee) / 100
+
+    def clean(self):
+        """Validate model fields."""
+        if self.maximum_amount <= self.minimum_amount:
+            raise ValidationError({
+                'maximum_amount': 'Maximum amount must be greater than minimum amount'
+            })
+        
+        # Set risk-based amounts if not specified
+        if not self.high_risk_max_amount:
+            self.high_risk_max_amount = self.maximum_amount * Decimal('0.3')
+        if not self.medium_risk_max_amount:
+            self.medium_risk_max_amount = self.maximum_amount * Decimal('0.6')
+        if not self.moderate_risk_max_amount:
+            self.moderate_risk_max_amount = self.maximum_amount
+
+    def save(self, *args, **kwargs):
+        # Set minimum and maximum terms based on term_months
+        self.minimum_term = 1
+        self.maximum_term = self.term_months
+        super().save(*args, **kwargs)
 
 
 class Loan(models.Model):
@@ -136,7 +182,7 @@ class Loan(models.Model):
     # Loan Details
     application_number = models.CharField(max_length=50, unique=True)
     amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )

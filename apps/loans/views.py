@@ -6,13 +6,13 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Count, Case, When, F, ExpressionWrapper, DecimalField, Value
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from decimal import Decimal, InvalidOperation
 
 from .models import Loan, LoanProduct, LoanApplication, LoanGuarantor
 from .forms import LoanForm, LoanApprovalForm
 from apps.customers.models import Customer
 import json
-from decimal import Decimal
 from datetime import timedelta, datetime
 
 def generate_application_number():
@@ -355,3 +355,76 @@ def loan_schedule(request, pk):
         'schedule': schedule,
     }
     return render(request, 'loans/loan_schedule.html', context)
+
+@login_required
+def loan_product_list(request):
+    """List and manage loan products."""
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'delete':
+            product_id = request.POST.get('product_id')
+            try:
+                product = LoanProduct.objects.get(id=product_id)
+                product.delete()
+                messages.success(request, f'Loan product "{product.name}" deleted successfully.')
+            except LoanProduct.DoesNotExist:
+                messages.error(request, 'Loan product not found.')
+            except Exception as e:
+                messages.error(request, f'Error deleting loan product: {str(e)}')
+        else:
+            # Handle create/update
+            product_id = request.POST.get('product_id')
+            try:
+                if product_id:
+                    # Update existing product
+                    product = LoanProduct.objects.get(id=product_id)
+                    message = f'Loan product "{product.name}" updated successfully.'
+                else:
+                    # Create new product
+                    product = LoanProduct()
+                    message = 'New loan product created successfully.'
+                
+                # Update product fields
+                product.name = request.POST.get('name', '').strip()
+                product.description = request.POST.get('description', '').strip()
+                product.is_active = request.POST.get('is_active') == 'on'
+
+                # Term and rates
+                product.term_months = int(request.POST.get('term_months', 1))
+                product.grace_period_months = int(request.POST.get('grace_period_months', 0))
+                product.interest_rate = Decimal(request.POST.get('interest_rate', '0'))
+                product.penalty_rate = Decimal(request.POST.get('penalty_rate', '0'))
+                product.processing_fee = Decimal(request.POST.get('processing_fee', '0'))
+                product.insurance_fee = Decimal(request.POST.get('insurance_fee', '0'))
+                product.minimum_amount = Decimal(request.POST.get('minimum_amount', '0'))
+                product.maximum_amount = Decimal(request.POST.get('maximum_amount', '0'))
+
+                # Documents and criteria
+                product.required_documents = request.POST.get('required_documents', '').strip()
+                product.eligibility_criteria = request.POST.get('eligibility_criteria', '').strip()
+
+                # Term limits
+                product.minimum_term = 1
+                product.maximum_term = product.term_months
+
+                # Save the product
+                product.save()
+
+                # Update risk-based amounts
+                if product.maximum_amount > 0:
+                    product.high_risk_max_amount = product.maximum_amount * Decimal('0.3')
+                    product.medium_risk_max_amount = product.maximum_amount * Decimal('0.6')
+                    product.moderate_risk_max_amount = product.maximum_amount
+                    product.save()
+                
+                messages.success(request, message)
+            except LoanProduct.DoesNotExist:
+                messages.error(request, 'Loan product not found.')
+            except (ValueError, TypeError, InvalidOperation) as e:
+                messages.error(request, f'Invalid value provided: {str(e)}')
+            except Exception as e:
+                messages.error(request, f'Error saving loan product: {str(e)}')
+    
+    # Get all loan products
+    loan_products = LoanProduct.objects.all().order_by('-created_at')
+    return render(request, 'loans/loan_product_list.html', {'loan_products': loan_products})

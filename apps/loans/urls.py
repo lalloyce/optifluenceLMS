@@ -22,4 +22,7 @@ urlpatterns = [
     
     # Application Management
     path('application/<int:pk>/', views.application_detail, name='application_detail'),
+    
+    # Loan Product Management
+    path('loan-products/', views.loan_product_list, name='loan_product_list'),
 ]
