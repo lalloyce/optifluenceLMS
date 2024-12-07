@@ -49,15 +49,21 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'crispy_forms',
+    'crispy_bootstrap5',
     
     # Local apps
     'apps.accounts',
     'apps.customers',
-    'apps.loans',
+    'apps.loans',  # templatetags will be found automatically
     'apps.transactions',
     'apps.mpesastk',
     'apps.core',  # Add core app
 ]
+
+# Crispy Forms
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
