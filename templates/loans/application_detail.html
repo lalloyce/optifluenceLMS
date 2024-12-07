@@ -1,0 +1,317 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+{% load loan_filters %}
+
+{% block title %}Loan Application #{{ application.application_number }} - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Loan Application #{{ application.application_number }}</h4>
+                    <div>
+                        <a href="{% url 'web_loans:list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Status Badge -->
+                    <div class="mb-4">
+                        <span class="badge {% if application.status == 'APPROVED' %}bg-success{% elif application.status == 'REJECTED' %}bg-danger{% elif application.status == 'IN_REVIEW' %}bg-info{% else %}bg-warning{% endif %} fs-6">
+                            {{ application.get_status_display }}
+                        </span>
+                    </div>
+
+                    <!-- Application Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Customer Information</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Name</dt>
+                                <dd class="col-sm-8">{{ application.customer.get_full_name }}</dd>
+                                
+                                <dt class="col-sm-4">ID Number</dt>
+                                <dd class="col-sm-8">{{ application.customer.id_number }}</dd>
+                                
+                                <dt class="col-sm-4">Phone</dt>
+                                <dd class="col-sm-8">{{ application.customer.phone_number }}</dd>
+                                
+                                <dt class="col-sm-4">Email</dt>
+                                <dd class="col-sm-8">{{ application.customer.email|default:"Not provided" }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Loan Details</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Product</dt>
+                                <dd class="col-sm-8">{{ application.loan_product.name }}</dd>
+                                
+                                <dt class="col-sm-4">Amount</dt>
+                                <dd class="col-sm-8">KES {{ application.amount_requested|floatformat:2 }}</dd>
+                                
+                                <dt class="col-sm-4">Term</dt>
+                                <dd class="col-sm-8">{{ application.term_months }} months</dd>
+                                
+                                <dt class="col-sm-4">Interest Rate</dt>
+                                <dd class="col-sm-8">{{ application.loan_product.interest_rate }}%</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Employment and Income -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>Employment & Income Information</h5>
+                            <dl class="row">
+                                <dt class="col-sm-3">Employment Status</dt>
+                                <dd class="col-sm-9">{{ application.get_employment_status_display }}</dd>
+                                
+                                <dt class="col-sm-3">Monthly Income</dt>
+                                <dd class="col-sm-9">KES {{ application.monthly_income|default:"Not provided"|floatformat:2 }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Loan Purpose -->
+                    <div class="mb-4">
+                        <h5>Loan Purpose</h5>
+                        <p class="mb-0">{{ application.purpose|default:"Not provided"|linebreaks }}</p>
+                    </div>
+
+                    <!-- Other Active Loans -->
+                    {% if application.other_loans %}
+                    <div class="mb-4">
+                        <h5>Other Active Loans</h5>
+                        <p class="mb-0">{{ application.other_loans|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Application Timeline -->
+                    <div class="mb-4">
+                        <h5>Application Timeline</h5>
+                        <dl class="row">
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">{{ application.created_at }}</dd>
+                            
+                            {% if application.submitted_date %}
+                            <dt class="col-sm-3">Submitted</dt>
+                            <dd class="col-sm-9">{{ application.submitted_date }}</dd>
+                            {% endif %}
+                            
+                            {% if application.review_date %}
+                            <dt class="col-sm-3">Review Started</dt>
+                            <dd class="col-sm-9">{{ application.review_date }} by {{ application.reviewed_by.get_full_name }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+
+                    <!-- Notes -->
+                    {% if application.notes %}
+                    <div class="mb-4">
+                        <h5>Notes</h5>
+                        <p class="mb-0">{{ application.notes|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Rejection Reason -->
+                    {% if application.status == 'REJECTED' and application.rejection_reason %}
+                    <div class="mb-4">
+                        <h5>Rejection Reason</h5>
+                        <p class="mb-0 text-danger">{{ application.rejection_reason|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if application.status == 'APPROVED' and application.loan %}
+                    <div class="card mt-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Repayment Schedule</h5>
+                            <div class="text-end">
+                                <p class="mb-0">Total Loan Amount: <strong>KES {{ application.loan.loan_amount|floatformat:2|intcomma }}</strong></p>
+                                <p class="mb-0">Remaining Balance: <strong>KES {{ remaining_balance|floatformat:2|intcomma }}</strong></p>
+                                <p class="mb-0">Interest Rate: <strong>{{ application.loan.interest_rate|floatformat:1 }}%</strong></p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Due Date</th>
+                                            <th>Principal</th>
+                                            <th>Interest</th>
+                                            <th>Total</th>
+                                            <th>Paid</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for installment in application.loan.repayment_schedule.all %}
+                                        <tr>
+                                            <td>{{ installment.installment_number }}</td>
+                                            <td>{{ installment.due_date|date:"M d, Y" }}</td>
+                                            <td>KES {{ installment.principal_amount|floatformat:2|intcomma }}</td>
+                                            <td>KES {{ installment.interest_amount|floatformat:2|intcomma }}</td>
+                                            <td>KES {{ installment.total_amount|floatformat:2|intcomma }}</td>
+                                            <td>KES {{ installment.paid_amount|floatformat:2|intcomma }}</td>
+                                            <td>
+                                                <span class="badge {% if installment.status == 'PAID' %}bg-success{% elif installment.status == 'OVERDUE' %}bg-danger{% elif installment.status == 'PARTIALLY_PAID' %}bg-warning{% else %}bg-info{% endif %}">
+                                                    {{ installment.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if installment.status != 'PAID' %}
+                                                <button type="button" class="btn btn-primary btn-sm" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#paymentModal"
+                                                        data-installment-id="{{ installment.id }}"
+                                                        data-remaining-amount="{{ installment.total_amount|sub:installment.paid_amount }}">
+                                                    <i class="fas fa-money-bill-wave me-1"></i>Pay
+                                                </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if perms.loans.can_approve_loans %}
+                        {% if application.status == 'SUBMITTED' %}
+                        <form method="post" class="mb-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="review">
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="fas fa-eye me-2"></i>Start Review
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if application.status == 'SUBMITTED' or application.status == 'IN_REVIEW' %}
+                        <form method="post" class="mb-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-check me-2"></i>Approve Application
+                            </button>
+                        </form>
+
+                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fas fa-times me-2"></i>Reject Application
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">Reject Application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'web_loans:record_payment' application.loan.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="installment_id" id="installmentId">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentModalLabel">Record Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="payment_amount" class="form-label">Payment Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="payment_amount" name="amount" required>
+                        <div class="form-text">Remaining amount: KES <span id="remainingAmount">0.00</span></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_date" class="form-label">Payment Date</label>
+                        <input type="date" class="form-control" id="payment_date" name="payment_date" 
+                               value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="payment_notes" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentModal = document.getElementById('paymentModal');
+    if (paymentModal) {
+        paymentModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const installmentId = button.getAttribute('data-installment-id');
+            const remainingAmount = button.getAttribute('data-remaining-amount');
+            
+            document.getElementById('installmentId').value = installmentId;
+            document.getElementById('remainingAmount').textContent = parseFloat(remainingAmount).toFixed(2);
+            document.getElementById('payment_amount').value = remainingAmount;
+            document.getElementById('payment_amount').max = remainingAmount;
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

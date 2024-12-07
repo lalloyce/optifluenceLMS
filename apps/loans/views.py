@@ -10,7 +10,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from decimal import Decimal, InvalidOperation
 
 from .models import Loan, LoanProduct, LoanApplication, LoanGuarantor
-from .forms import LoanForm, LoanApprovalForm
+from .forms import LoanForm, LoanApprovalForm, LoanApplicationForm
 from apps.customers.models import Customer
 import json
 from datetime import timedelta, datetime
@@ -150,40 +150,113 @@ def dashboard(request):
 
     return render(request, 'loans/dashboard.html', context)
 
+# views.py
+@login_required
+def customer_details_api(request, pk):
+    """API endpoint for fetching customer details."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    try:
+        customer = Customer.objects.get(pk=pk)
+        active_loans = Loan.objects.filter(
+            customer=customer,
+            status__in=[Loan.Status.APPROVED, Loan.Status.DISBURSED]
+        ).select_related('loan_product')
+        
+        data = {
+            'full_name': f"{customer.first_name} {customer.last_name}",
+            'id_number': customer.id_number,
+            'phone_number': customer.phone_number,
+            'email': customer.email,
+            'active_loans': [{
+                'application_number': loan.application_number,
+                'product_name': loan.loan_product.name,
+                'amount': float(loan.amount),
+                'status': loan.get_status_display()
+            } for loan in active_loans]
+        }
+        return JsonResponse(data)
+    except Customer.DoesNotExist:
+        return JsonResponse({'error': 'Customer not found'}, status=404)
+
+
 @login_required
 def loan_application(request):
     """Handle new loan applications."""
+    if not request.user.is_staff:
+        messages.error(request, 'You do not have permission to create loan applications.')
+        return redirect('web_accounts:login')
+
     if request.method == 'POST':
-        form = LoanForm(request.POST)
+        form = LoanApplicationForm(request.POST)
         if form.is_valid():
-            loan = form.save(commit=False)
-            loan.loan_officer = request.user
-            loan.application_number = generate_application_number()
-            loan.status = Loan.Status.PENDING
+            application = form.save(commit=False)
+            application.created_by = request.user
+            application.application_number = generate_application_number()
+            application.status = LoanApplication.Status.SUBMITTED
+            application.save()
             
-            # Handle guarantor if provided
-            guarantor = form.cleaned_data.get('guarantor')
-            if guarantor:
-                loan_guarantor = LoanGuarantor(
-                    loan=loan,
-                    guarantor=guarantor,
-                    guarantee_amount=loan.amount,  # You might want to adjust this
-                    status='PENDING'
-                )
-                loan_guarantor.save()
-            
-            loan.save()
-            messages.success(request, 'Loan application submitted successfully.')
-            return redirect('web_loans:detail', pk=loan.pk)
+            messages.success(request, 'Loan application submitted successfully!')
+            return redirect('web_loans:application_detail', pk=application.pk)
     else:
-        form = LoanForm()
+        form = LoanApplicationForm()
+        
+        # If customer is selected, pre-fill other loans information
+        customer_id = request.GET.get('customer')
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+                active_loans = Loan.objects.filter(
+                    customer=customer,
+                    status__in=[Loan.Status.APPROVED, Loan.Status.DISBURSED]
+                ).select_related('loan_product')
+                
+                if active_loans.exists():
+                    other_loans_info = "\n".join([
+                        f"Loan #{loan.application_number}: {loan.loan_product.name} - "
+                        f"Amount: {loan.amount}, Status: {loan.get_status_display()}"
+                        for loan in active_loans
+                    ])
+                    form.initial['other_loans'] = other_loans_info
+                else:
+                    form.initial['other_loans'] = "No active loans"
+            except Customer.DoesNotExist:
+                pass
     
     context = {
         'form': form,
         'loan_products': LoanProduct.objects.filter(is_active=True),
-        'customers': Customer.objects.all()  # For guarantor selection
+        'customers': Customer.objects.filter(is_active=True)
     }
     return render(request, 'loans/loan_application.html', context)
+
+@login_required
+def guarantor_list_api(request):
+    """API endpoint for fetching eligible guarantors."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    customer_id = request.GET.get('exclude')
+    if not customer_id:
+        return JsonResponse({'error': 'Customer ID required'}, status=400)
+    
+    try:
+        # Get all active customers except the loan applicant
+        guarantors = Customer.objects.filter(
+            is_active=True
+        ).exclude(
+            id=customer_id
+        ).values('id', 'first_name', 'last_name', 'id_number')
+        
+        return JsonResponse({
+            'guarantors': [{
+                'id': g['id'],
+                'name': f"{g['first_name']} {g['last_name']} - {g['id_number']}"
+            } for g in guarantors]
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def loan_list(request):
@@ -233,21 +306,32 @@ def application_detail(request, pk):
     
     if request.method == 'POST' and request.user.has_perm('loans.can_approve_loans'):
         action = request.POST.get('action')
-        if action == 'approve':
-            application.approve()
-            loan = Loan.create_from_application(application, request.user)
-            messages.success(request, 'Loan application approved successfully.')
-            return redirect('web_loans:detail', pk=loan.pk)
-        elif action == 'reject':
-            reason = request.POST.get('rejection_reason')
-            application.reject(reason)
-            messages.success(request, 'Loan application rejected.')
-        elif action == 'review':
-            application.start_review(request.user)
-            messages.success(request, 'Application review started.')
+        try:
+            if action == 'approve':
+                application.approve()
+                loan = Loan.create_from_application(application, request.user)
+                messages.success(request, 'Loan application approved and loan created successfully.')
+                return redirect('web_loans:loan_detail', pk=loan.pk)
+            elif action == 'reject':
+                reason = request.POST.get('rejection_reason')
+                application.reject(reason)
+                messages.success(request, 'Loan application rejected.')
+            elif action == 'review':
+                application.start_review(request.user)
+                messages.success(request, 'Application review started.')
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    # Calculate remaining balance if loan exists
+    remaining_balance = None
+    if application.status == 'APPROVED' and hasattr(application, 'loan'):
+        total_paid = sum(i.paid_amount for i in application.loan.repayment_schedule.all())
+        remaining_balance = application.loan.loan_amount - total_paid
     
     context = {
         'application': application,
+        'remaining_balance': remaining_balance,
+        'today': timezone.now(),
     }
     return render(request, 'loans/application_detail.html', context)
 
@@ -322,6 +406,39 @@ def loan_disburse(request, pk):
     return render(request, 'loans/loan_disburse.html', {'loan': loan})
 
 @login_required
+def record_payment(request, pk):
+    """Record a payment for a loan installment."""
+    loan = get_object_or_404(Loan, pk=pk)
+    
+    if request.method == 'POST':
+        installment_id = request.POST.get('installment_id')
+        amount = Decimal(request.POST.get('amount'))
+        payment_date = request.POST.get('payment_date')
+        notes = request.POST.get('notes')
+        
+        try:
+            installment = loan.repayment_schedule.get(id=installment_id)
+            remaining = installment.total_amount - installment.paid_amount
+            
+            if amount > remaining:
+                messages.error(request, f'Payment amount cannot exceed remaining amount of KES {remaining}')
+            else:
+                installment.paid_amount += amount
+                installment.payment_date = payment_date
+                if notes:
+                    installment.notes = (installment.notes or '') + f'\n{timezone.now()}: {notes}'
+                installment.save()
+                installment.update_status()
+                
+                messages.success(request, f'Payment of KES {amount} recorded successfully')
+        except RepaymentSchedule.DoesNotExist:
+            messages.error(request, 'Invalid installment selected')
+        except ValueError:
+            messages.error(request, 'Invalid payment amount')
+    
+    return redirect('web_loans:application_detail', pk=loan.application.pk)
+
+@login_required
 def loan_calculator(request):
     """Loan calculator view."""
     if request.method == 'POST':
@@ -329,12 +446,11 @@ def loan_calculator(request):
         term_months = int(request.POST.get('term_months', 0))
         interest_rate = Decimal(request.POST.get('interest_rate', 0))
         
-        # Calculate monthly payment
-        monthly_rate = interest_rate / 12 / 100
-        monthly_payment = (amount * monthly_rate * (1 + monthly_rate) ** term_months) / ((1 + monthly_rate) ** term_months - 1)
-        
-        total_payment = monthly_payment * term_months
-        total_interest = total_payment - amount
+        # Calculate simple interest
+        annual_rate = interest_rate / 100
+        total_interest = amount * annual_rate * (term_months / 12)
+        total_payment = amount + total_interest
+        monthly_payment = total_payment / term_months
         
         return JsonResponse({
             'monthly_payment': float(monthly_payment),

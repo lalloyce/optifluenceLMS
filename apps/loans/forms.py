@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
-from .models import Loan, LoanProduct
+from .models import Loan, LoanProduct, LoanApplication
 from apps.customers.models import Customer
 from .services.risk_assessment import LoanRiskAssessment
 from decimal import Decimal
@@ -26,9 +26,11 @@ class LoanForm(forms.ModelForm):
             'term_months',
             'purpose',
             'guarantor',
+            'disbursement_date',
         ]
         widgets = {
             'purpose': forms.Textarea(attrs={'rows': 3}),
+            'disbursement_date': forms.DateInput(attrs={'type': 'date'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -53,6 +55,7 @@ class LoanForm(forms.ModelForm):
         amount = cleaned_data.get('amount')
         term_months = cleaned_data.get('term_months')
         customer = cleaned_data.get('customer')
+        disbursement_date = cleaned_data.get('disbursement_date')
         
         if all([loan_product, amount, term_months, customer]):
             # Perform risk assessment
@@ -100,6 +103,11 @@ class LoanForm(forms.ModelForm):
                     params={'max_term': loan_product.maximum_term},
                 )
             
+        if disbursement_date and disbursement_date < timezone.now().date():
+            raise ValidationError({
+                'disbursement_date': _('Disbursement date cannot be in the past.')
+            })
+        
         return cleaned_data
     
     def save(self, commit=True):
@@ -125,6 +133,62 @@ class LoanForm(forms.ModelForm):
             alert_service.check_all_risk_patterns()
             
         return loan
+
+
+class LoanApplicationForm(forms.ModelForm):
+    """Form for loan applications."""
+    
+    customer = forms.ModelChoiceField(
+        queryset=Customer.objects.filter(is_active=True),
+        empty_label="Select a customer",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    class Meta:
+        model = LoanApplication
+        fields = [
+            'customer',
+            'loan_product',
+            'amount_requested',
+            'term_months',
+            'purpose',
+            'employment_status',
+            'monthly_income',
+            'other_loans',
+            'disbursement_date'
+        ]
+        widgets = {
+            'purpose': forms.Textarea(attrs={'rows': 3}),
+            'other_loans': forms.Textarea(attrs={'rows': 2}),
+            'disbursement_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'term_months': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly'
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['loan_product'].queryset = LoanProduct.objects.filter(is_active=True)
+        self.fields['loan_product'].empty_label = "Select a loan product"
+        
+        # Add help texts
+        self.fields['customer'].help_text = "Select the customer applying for the loan"
+        self.fields['amount_requested'].help_text = "Enter the amount to borrow"
+        self.fields['term_months'].help_text = "Loan term is set by the selected product"
+        self.fields['monthly_income'].help_text = "Customer's total monthly income"
+        self.fields['disbursement_date'].help_text = "When should the loan be disbursed?"
+        
+        # If we have a loan product selected, set the term_months
+        if self.data.get('loan_product'):
+            try:
+                product = LoanProduct.objects.get(pk=self.data['loan_product'])
+                self.initial['term_months'] = product.term_months
+            except (LoanProduct.DoesNotExist, ValueError):
+                pass
 
 
 class LoanApprovalForm(forms.Form):

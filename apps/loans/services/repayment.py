@@ -20,19 +20,27 @@ class RepaymentService:
         if not schedule.is_overdue:
             return Decimal('0.00')
             
-        # Calculate months overdue (rounded up)
+        # Calculate days overdue from disbursement date
+        if not self.loan.disbursement_date:
+            return Decimal('0.00')
+            
         days_overdue = (timezone.now().date() - schedule.due_date).days
+        if days_overdue <= 0:
+            return Decimal('0.00')
+            
         months_overdue = (days_overdue + 29) // 30  # Round up to nearest month
         
-        # Monthly penalty rate (e.g., 10% = 0.10)
-        monthly_penalty_rate = self.config.penalty_rate / Decimal('100')
+        # Get total outstanding amount (principal + interest + existing penalties)
+        loan_balance = self.get_loan_balance()
+        total_outstanding = loan_balance['total_balance']
         
-        # Calculate penalty on remaining amount
-        penalty_amount = schedule.remaining_amount * (monthly_penalty_rate * months_overdue)
+        # Calculate penalty using simple interest on total outstanding
+        annual_penalty_rate = self.loan.loan_product.penalty_rate / Decimal('100')
+        monthly_penalty_rate = annual_penalty_rate / Decimal('12')
+        penalty_amount = total_outstanding * monthly_penalty_rate * months_overdue
         
-        # Cap penalty at 100% of the remaining amount
-        max_penalty = schedule.remaining_amount
-        return min(penalty_amount, max_penalty)
+        # Cap penalty at 100% of the outstanding amount
+        return min(penalty_amount, total_outstanding)
     
     def calculate_interest(self, principal):
         """Calculate simple interest for the loan.
@@ -148,32 +156,45 @@ class RepaymentService:
         return [schedule]
     
     def get_loan_balance(self):
-        """Get current loan balance including penalties."""
-        schedules = self.loan.repayment_schedule.all()
-        
-        principal_remaining = Decimal('0.00')
-        interest_remaining = Decimal('0.00')
-        total_penalties = Decimal('0.00')
-        
-        for schedule in schedules:
-            # Split remaining amount into principal and interest
-            total_remaining = schedule.remaining_amount
-            if total_remaining > 0:
-                ratio = schedule.principal_amount / schedule.total_amount
-                principal_remaining += total_remaining * ratio
-                interest_remaining += total_remaining * (1 - ratio)
+        """Get current loan balance including principal, interest and penalties."""
+        if not self.loan.disbursement_date:
+            raise ValueError("Loan has not been disbursed yet")
             
-            # Calculate current penalties
-            if schedule.is_overdue:
-                total_penalties += self.calculate_penalty(schedule)
+        total_paid = self.loan.transactions.filter(
+            status=Transaction.Status.COMPLETED
+        ).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        
+        # Calculate total loan amount (principal + interest)
+        total_loan_amount = self.loan.amount + self.calculate_total_interest()
+        
+        # Calculate total penalties
+        total_penalties = sum(
+            self.calculate_penalty(schedule)
+            for schedule in self.loan.repayment_schedule.all()
+        )
         
         return {
-            'principal_remaining': principal_remaining,
-            'interest_remaining': interest_remaining,
-            'penalties': total_penalties,
-            'total_balance': principal_remaining + interest_remaining + total_penalties,
-            'payment_progress': self._calculate_payment_progress()
+            'total_balance': total_loan_amount + total_penalties - total_paid,
+            'principal_balance': self.loan.amount,
+            'interest_balance': self.calculate_total_interest(),
+            'penalty_balance': total_penalties,
+            'total_paid': total_paid
         }
+    
+    def calculate_total_interest(self):
+        """Calculate total interest for the loan based on disbursement date."""
+        if not self.loan.disbursement_date:
+            return Decimal('0.00')
+            
+        principal = self.loan.amount
+        annual_rate = self.loan.interest_rate / Decimal('100')
+        term_years = self.loan.term_months / Decimal('12')
+        
+        # Simple interest calculation
+        total_interest = principal * annual_rate * term_years
+        return total_interest.quantize(Decimal('0.01'))
     
     def _calculate_payment_progress(self):
         """Calculate overall payment progress as percentage."""
