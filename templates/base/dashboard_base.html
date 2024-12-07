@@ -85,7 +85,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'accounts:dashboard' %}">
-                <img src="{% static 'images/logo.png' %}" alt="Optifluence" height="30">
+                <img src="{% static 'images/logo.svg' %}" alt="Optifluence" height="30">
             </a>
             <div class="d-flex align-items-center">
                 <div class="dropdown">
@@ -141,6 +141,13 @@
                        href="{% url 'accounts:reports' %}">
                         <i class="fas fa-chart-bar"></i>
                         Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'loan_product_list' %}active{% endif %}" 
+                       href="{% url 'web_loans:loan_product_list' %}">
+                        <i class="fas fa-tags me-2"></i>
+                        <span>Loan Products</span>
                     </a>
                 </li>
             </ul>

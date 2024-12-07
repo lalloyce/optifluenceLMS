@@ -1,0 +1,363 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Loan Products - OptifluenceLMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Loan Products</h2>
+                <button type="button" id="addProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLoanProductModal">
+                    <i class="fas fa-plus me-2"></i>Add Loan Product
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        {% for product in loan_products %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ product.name }}</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-dark" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button class="dropdown-item edit-product" 
+                                        data-product-id="{{ product.id }}"
+                                        data-product-name="{{ product.name }}"
+                                        data-product-description="{{ product.description }}"
+                                        data-product-term="{{ product.term_months }}"
+                                        data-product-interest="{{ product.interest_rate }}"
+                                        data-product-penalty="{{ product.penalty_rate }}"
+                                        data-product-grace="{{ product.grace_period_months }}"
+                                        data-product-processing="{{ product.processing_fee }}"
+                                        data-product-insurance="{{ product.insurance_fee }}"
+                                        data-product-min-amount="{{ product.minimum_amount }}"
+                                        data-product-max-amount="{{ product.maximum_amount }}"
+                                        data-product-docs="{{ product.required_documents }}"
+                                        data-product-criteria="{{ product.eligibility_criteria }}"
+                                        data-product-is-active="{{ product.is_active|yesno:'true,false' }}">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item text-danger delete-product" 
+                                        data-product-id="{{ product.id }}"
+                                        data-product-name="{{ product.name }}">
+                                    <i class="fas fa-trash-alt me-2"></i>Delete
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if product.description %}
+                    <p class="card-text">{{ product.description }}</p>
+                    <hr>
+                    {% endif %}
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Term</small>
+                            <strong>{{ product.term_months }} months</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Grace Period</small>
+                            <strong>{{ product.grace_period_months }} months</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Interest Rate</small>
+                            <strong>{{ product.interest_rate|floatformat:2 }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Penalty Rate</small>
+                            <strong>{{ product.penalty_rate|floatformat:2 }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Processing Fee</small>
+                            <strong>{{ product.processing_fee|floatformat:2 }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Insurance Fee</small>
+                            <strong>{{ product.insurance_fee|floatformat:2 }}%</strong>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted d-block">Amount Range</small>
+                            <strong>KES {{ product.minimum_amount|intcomma }} - {{ product.maximum_amount|intcomma }}</strong>
+                        </div>
+                        
+                        {% if product.required_documents %}
+                        <div class="col-12">
+                            <small class="text-muted d-block">Required Documents</small>
+                            <ul class="mb-0 ps-3">
+                                {% for doc in product.required_documents.splitlines %}
+                                <li>{{ doc }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if product.eligibility_criteria %}
+                        <div class="col-12">
+                            <small class="text-muted d-block">Eligibility Criteria</small>
+                            <ul class="mb-0 ps-3">
+                                {% for criteria in product.eligibility_criteria.splitlines %}
+                                <li>{{ criteria }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="badge {% if product.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ product.is_active|yesno:"Active,Inactive" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col">
+            <div class="alert alert-info">
+                No loan products found. Click the "Add Loan Product" button to create one.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add/Edit Loan Product Modal -->
+<div class="modal fade" id="addLoanProductModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Loan Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addLoanProductForm" method="post" action="{% url 'web_loans:loan_product_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Product Name</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Term (Months)</label>
+                            <input type="number" name="term_months" class="form-control" 
+                                   min="1" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Grace Period (Months)</label>
+                            <input type="number" name="grace_period_months" class="form-control" 
+                                   min="0" value="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Interest Rate (%)</label>
+                            <input type="number" name="interest_rate" class="form-control" 
+                                   step="0.01" min="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Penalty Rate (%)</label>
+                            <input type="number" name="penalty_rate" class="form-control" 
+                                   step="0.01" min="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Processing Fee (%)</label>
+                            <input type="number" name="processing_fee" class="form-control" 
+                                   step="0.01" min="0" value="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Insurance Fee (%)</label>
+                            <input type="number" name="insurance_fee" class="form-control" 
+                                   step="0.01" min="0" value="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Minimum Amount (KES)</label>
+                            <input type="number" name="minimum_amount" class="form-control" 
+                                   step="1000" min="0" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Maximum Amount (KES)</label>
+                            <input type="number" name="maximum_amount" class="form-control" 
+                                   step="1000" min="0" required>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Required Documents (One per line)</label>
+                            <textarea name="required_documents" class="form-control" rows="3"
+                                    placeholder="National ID&#10;Latest Payslip&#10;Bank Statement"></textarea>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Eligibility Criteria (One per line)</label>
+                            <textarea name="eligibility_criteria" class="form-control" rows="3"
+                                    placeholder="Minimum monthly income: KES 30,000&#10;Must be employed for at least 6 months&#10;Clean CRB record"></textarea>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="checkbox" name="is_active" class="form-check-input" 
+                                       id="isActive" checked>
+                                <label class="form-check-label" for="isActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteLoanProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Loan Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete "<span id="deleteProductName"></span>"?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteLoanProductForm" method="post" action="{% url 'web_loans:loan_product_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="product_id" id="deleteProductId">
+                    <button type="submit" class="btn btn-danger">Delete Product</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle edit button clicks
+    document.querySelectorAll('.edit-product').forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = document.getElementById('addLoanProductModal');
+            const form = document.getElementById('addLoanProductForm');
+            const modalTitle = modal.querySelector('.modal-title');
+            
+            // Update modal title
+            modalTitle.textContent = 'Edit Loan Product';
+            
+            // Set form values from data attributes
+            form.querySelector('[name="product_id"]').value = this.dataset.productId;
+            form.querySelector('[name="name"]').value = this.dataset.productName;
+            form.querySelector('[name="description"]').value = this.dataset.productDescription;
+            form.querySelector('[name="term_months"]').value = this.dataset.productTerm;
+            form.querySelector('[name="grace_period_months"]').value = this.dataset.productGrace;
+            form.querySelector('[name="interest_rate"]').value = this.dataset.productInterest;
+            form.querySelector('[name="penalty_rate"]').value = this.dataset.productPenalty;
+            form.querySelector('[name="processing_fee"]').value = this.dataset.productProcessing;
+            form.querySelector('[name="insurance_fee"]').value = this.dataset.productInsurance;
+            form.querySelector('[name="minimum_amount"]').value = this.dataset.productMinAmount;
+            form.querySelector('[name="maximum_amount"]').value = this.dataset.productMaxAmount;
+            form.querySelector('[name="required_documents"]').value = this.dataset.productDocs;
+            form.querySelector('[name="eligibility_criteria"]').value = this.dataset.productCriteria;
+            form.querySelector('[name="is_active"]').checked = this.dataset.productIsActive === 'true';
+
+            // Show the modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        });
+    });
+
+    // Reset form when adding new product
+    document.getElementById('addProductBtn').addEventListener('click', function() {
+        const modal = document.getElementById('addLoanProductModal');
+        const form = document.getElementById('addLoanProductForm');
+        const modalTitle = modal.querySelector('.modal-title');
+        
+        // Reset title and form
+        modalTitle.textContent = 'Add Loan Product';
+        form.reset();
+        form.querySelector('[name="product_id"]').value = '';
+    });
+    
+    // Handle delete button clicks
+    document.querySelectorAll('.delete-product').forEach(button => {
+        button.addEventListener('click', function() {
+            const data = this.dataset;
+            document.getElementById('deleteProductId').value = data.productId;
+            document.getElementById('deleteProductName').textContent = data.productName;
+            
+            new bootstrap.Modal(document.getElementById('deleteLoanProductModal')).show();
+        });
+    });
+    
+    // Reset add modal form when closed
+    document.getElementById('addLoanProductModal').addEventListener('hidden.bs.modal', function() {
+        this.querySelector('.modal-title').textContent = 'Add Loan Product';
+        this.querySelector('form').reset();
+        const productIdInput = this.querySelector('[name="product_id"]');
+        if (productIdInput) productIdInput.remove();
+    });
+    
+    // Form validation
+    const validateForm = (form) => {
+        const minAmount = parseFloat(form.querySelector('[name="minimum_amount"]').value);
+        const maxAmount = parseFloat(form.querySelector('[name="maximum_amount"]').value);
+        
+        if (maxAmount <= minAmount) {
+            alert('Maximum amount must be greater than minimum amount');
+            return false;
+        }
+        
+        return true;
+    };
+    
+    // Add form validation
+    document.getElementById('addLoanProductForm').addEventListener('submit', function(e) {
+        if (!validateForm(this)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}
