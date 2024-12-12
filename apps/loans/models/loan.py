@@ -7,277 +7,12 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.customers.models import Customer
 from django.conf import settings
 from django.utils import timezone
+from .loan_product import LoanProduct
+from .loan_application import LoanApplication
 from .repayment import RepaymentSchedule
 from .config import LoanConfig
+from django.shortcuts import get_object_or_404, redirect
 
-
-class LoanProduct(models.Model):
-    """Model for different types of loan products."""
-    
-    name = models.CharField(max_length=100)
-    description = models.TextField(null=True, blank=True)
-    interest_rate = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
-    )
-    minimum_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)]
-    )
-    maximum_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)]
-    )
-    minimum_term = models.IntegerField()
-    maximum_term = models.IntegerField()
-    processing_fee = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
-    )
-    
-    # Loan terms and fees
-    term_months = models.IntegerField(
-        validators=[MinValueValidator(1)],
-        help_text=_('Default term length in months'),
-        default=1  # Default 1 month term
-    )
-    grace_period_months = models.IntegerField(
-        default=0,
-        validators=[MinValueValidator(0)],
-        help_text=_('Grace period in months before first payment is due')
-    )
-    penalty_rate = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text=_('Annual penalty rate for late payments'),
-        default=Decimal('10.00')  # Default 10% annual penalty rate
-    )
-    insurance_fee = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text=_('Insurance fee as percentage of loan amount'),
-        default=Decimal('0.00')  # Default 0% insurance fee
-    )
-    
-    # Documentation and eligibility
-    required_documents = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_('List of required documents for loan application')
-    )
-    eligibility_criteria = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_('Eligibility criteria for loan approval')
-    )
-    
-    # Risk-based limits
-    high_risk_max_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)],
-        help_text=_('Maximum amount for high-risk loans (score < 40)')
-    )
-    medium_risk_max_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)],
-        help_text=_('Maximum amount for medium-risk loans (score 40-59)')
-    )
-    moderate_risk_max_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)],
-        help_text=_('Maximum amount for moderate-risk loans (score 60-79)')
-    )
-    
-    # Risk thresholds for automatic approval/rejection
-    auto_reject_below = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        default=30,
-        help_text=_('Automatically reject loans with risk score below this value')
-    )
-    auto_approve_above = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        default=80,
-        help_text=_('Automatically approve loans with risk score above this value')
-    )
-    
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = _('loan product')
-        verbose_name_plural = _('loan products')
-    
-    def __str__(self):
-        return self.name
-    
-    def get_max_amount_for_risk_score(self, risk_score):
-        """Get maximum allowed amount based on risk score."""
-        if risk_score >= 80:
-            return self.maximum_amount
-        elif risk_score >= 60:
-            return self.moderate_risk_max_amount
-        elif risk_score >= 40:
-            return self.medium_risk_max_amount
-        else:
-            return self.high_risk_max_amount
-
-
-class LoanApplication(models.Model):
-    """Model for loan applications before they become actual loans."""
-    
-    class Status(models.TextChoices):
-        DRAFT = 'DRAFT', _('Draft')
-        SUBMITTED = 'SUBMITTED', _('Submitted')
-        IN_REVIEW = 'IN_REVIEW', _('In Review')
-        APPROVED = 'APPROVED', _('Approved')
-        REJECTED = 'REJECTED', _('Rejected')
-        CANCELLED = 'CANCELLED', _('Cancelled')
-    
-    class EmploymentStatus(models.TextChoices):
-        EMPLOYED = 'EMPLOYED', _('Employed')
-        SELF_EMPLOYED = 'SELF_EMPLOYED', _('Self Employed')
-        BUSINESS_OWNER = 'BUSINESS_OWNER', _('Business Owner')
-        UNEMPLOYED = 'UNEMPLOYED', _('Unemployed')
-        RETIRED = 'RETIRED', _('Retired')
-        STUDENT = 'STUDENT', _('Student')
-    
-    application_number = models.CharField(max_length=50, unique=True)
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.PROTECT,
-        related_name='loan_applications'
-    )
-    loan_product = models.ForeignKey(
-        LoanProduct,
-        on_delete=models.PROTECT,
-        related_name='applications'
-    )
-    amount_requested = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)]
-    )
-    term_months = models.IntegerField(validators=[MinValueValidator(1)])
-    purpose = models.TextField(null=True, blank=True)
-    
-    # Employment and Income Information
-    employment_status = models.CharField(
-        max_length=20,
-        choices=EmploymentStatus.choices,
-        help_text=_('Current employment status'),
-        null=True,
-        blank=True
-    )
-    monthly_income = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(0)],
-        help_text=_('Monthly income in base currency'),
-        null=True,
-        blank=True
-    )
-    other_loans = models.TextField(
-        blank=True,
-        help_text=_('Details of other active loans or financial commitments')
-    )
-    
-    # Application Status
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.DRAFT
-    )
-    submitted_date = models.DateTimeField(null=True, blank=True)
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='reviewed_applications'
-    )
-    review_date = models.DateTimeField(null=True, blank=True)
-    
-    # Supporting Documents
-    documents = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_('List of supporting documents')
-    )
-    
-    # Additional Information
-    notes = models.TextField(null=True, blank=True)
-    rejection_reason = models.TextField(null=True, blank=True)
-    disbursement_date = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text=_('Requested date for loan disbursement')
-    )
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = _('loan application')
-        verbose_name_plural = _('loan applications')
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"Application {self.application_number} - {self.customer.full_name}"
-    
-    def save(self, *args, **kwargs):
-        if not self.application_number:
-            self.application_number = f"APP{timezone.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
-        super().save(*args, **kwargs)
-    
-    def submit(self):
-        """Submit the application for review."""
-        if self.status == self.Status.DRAFT:
-            self.status = self.Status.SUBMITTED
-            self.submitted_date = timezone.now()
-            self.save()
-    
-    def start_review(self, reviewer):
-        """Start the review process."""
-        if self.status == self.Status.SUBMITTED:
-            self.status = self.Status.IN_REVIEW
-            self.reviewed_by = reviewer
-            self.review_date = timezone.now()
-            self.save()
-    
-    def approve(self):
-        """Approve the application."""
-        if self.status not in [self.Status.SUBMITTED, self.Status.IN_REVIEW]:
-            raise ValueError("Can only approve submitted or in-review applications")
-        
-        self.status = self.Status.APPROVED
-        self.save()
-    
-    def reject(self, reason):
-        """Reject the application."""
-        if self.status in [self.Status.SUBMITTED, self.Status.IN_REVIEW]:
-            self.status = self.Status.REJECTED
-            self.rejection_reason = reason
-            self.save()
-    
-    def cancel(self):
-        """Cancel the application."""
-        if self.status in [self.Status.DRAFT, self.Status.SUBMITTED]:
-            self.status = self.Status.CANCELLED
-            self.save()
 
 
 class Loan(models.Model):
@@ -331,6 +66,52 @@ class Loan(models.Model):
     term_months = models.IntegerField(validators=[MinValueValidator(1)])
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2)
     processing_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    repayment_schedule = models.ManyToManyField(RepaymentSchedule, related_name='loans_repayment_schedules', blank=True)
+
+    def get_outstanding_amount(self):
+        """Calculate and return the outstanding loan amount."""
+        total_paid = sum(payment.amount for payment in self.payments.filter(status='PAID'))
+        outstanding_amount = self.amount - total_paid
+        return outstanding_amount
+
+    def make_payment(self, request): 
+        """Handle making a payment for this loan.""" 
+        amount = Decimal(request.POST['amount']) # Example: get payment amount from POST data 
+        payment_method = request.POST['payment_method'] 
+        reference_number = request.POST['reference_number'] 
+        payment = Payment.objects.create( 
+            loan=self, payment_date=timezone.now(), 
+            amount=amount, payment_method=payment_method, 
+            reference_number=reference_number, status='PAID' ) 
+        self.apply_payment(payment) 
+        return redirect('customer_detail', pk=self.customer.pk)
+
+    def apply_payment(self, payment):
+        """Apply a payment to the loan and update the repayment schedule."""
+        remaining_amount = payment.amount
+
+        # Apply payment to each installment in order of due date
+        for installment in self.repayment_schedule.filter(status__in=[RepaymentSchedule.Status.PENDING, RepaymentSchedule.Status.PARTIALLY_PAID]).order_by('due_date'):
+            if remaining_amount <= 0:
+                break
+
+            due_amount = installment.remaining_amount()
+            if remaining_amount >= due_amount:
+                installment.paid_amount += due_amount
+                installment.status = RepaymentSchedule.Status.PAID
+                remaining_amount -= due_amount
+            else:
+                installment.paid_amount += remaining_amount
+                installment.status = RepaymentSchedule.Status.PARTIALLY_PAID
+                remaining_amount = 0
+
+            installment.paid_date = timezone.now()
+            installment.save()
+
+        # Update loan status if fully paid
+        if all(inst.status == RepaymentSchedule.Status.PAID for inst in self.repayment_schedule.all()):
+            self.status = Loan.Status.CLOSED
+            self.save()
     
     # Risk Assessment
     risk_score = models.DecimalField(
@@ -377,13 +158,19 @@ class Loan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    class Meta:
-        verbose_name = _('loan')
-        verbose_name_plural = _('loans')
-        ordering = ['-application_date']
+    class Meta: 
+        verbose_name = _('loan') 
+        verbose_name_plural = _('loans') 
+        ordering = ['-application_date'] 
+        
+    def __str__(self): 
+        return f"Loan {self.application_number} - {self.customer.full_name}" 
     
-    def __str__(self):
-        return f"Loan {self.application_number} - {self.customer.full_name}"
+    def get_outstanding_amount(self): 
+        """Calculate and return the outstanding loan amount.""" 
+        total_paid = sum(payment.amount for payment in self.payments.filter(status='PAID')) 
+        outstanding_amount = self.amount - total_paid 
+        return outstanding_amount
     
     def save(self, *args, **kwargs):
         if not self.application_number:

@@ -181,7 +181,7 @@ def customer_detail(request, pk):
     loan_data = []
     for loan in loans:
         # Get all installments for this loan
-        installments = loan.installment_set.all().order_by('due_date').select_related('loan')
+        installments = loan.repayment_schedule.all().order_by('due_date').select_related('loan')
         payments = loan.payment_set.all().order_by('payment_date').select_related(
             'loan', 'transaction', 'transaction__mpesa_payment'
         )

@@ -13,11 +13,8 @@ class RepaymentSchedule(models.Model):
         PAID = 'PAID', _('Paid')
         OVERDUE = 'OVERDUE', _('Overdue')
     
-    loan = models.ForeignKey(
-        'loans.Loan',
-        on_delete=models.CASCADE,
-        related_name='repayment_schedule'
-    )
+    loan = models.ForeignKey('Loan', on_delete=models.CASCADE, related_name='loan_repayment_schedules')
+
     installment_number = models.IntegerField()
     due_date = models.DateField()
     principal_amount = models.DecimalField(
