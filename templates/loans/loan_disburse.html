@@ -1,0 +1,58 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Disburse Loan - {{ loan.application_number }} - OptifluenceLMS{% endblock %}
+
+{% block content %}
+
+    <script>
+        // Function to format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-KE', {
+                style: 'currency',
+                currency: 'KES',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+    </script>
+    <div class="container py-4 px-4">
+        <h1>Loan Disbursement</h1>
+        <form method="GET" action="{% url 'web_loans:disburse' loan.pk %}" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" id="national_id" name="national_id" placeholder="Enter National ID" required>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+
+        {% if loan %}
+        <div class="mb-4">
+            <h3>Loan Details</h3>
+            <p><strong>Customer Name:</strong> {{ loan.customer.name }}</p>
+            <p><strong>Date Applied:</strong> {{ loan.date_applied }}</p>
+            <p><strong>Loan Amount:</strong> {{ loan.amount }}</p>
+            <p><strong>Status:</strong> {{ loan.status }}</p>
+        </div>
+        {% else %}
+        <p>No loan found for the provided National ID.</p>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Disbursement Method</h5>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="disbursement_method">Choose Method:</label>
+                        <select class="form-control" id="disbursement_method" name="disbursement_method">
+                            <option value="mpesa">MPESA</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cash">Cash</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success mt-3">Disburse Loan</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

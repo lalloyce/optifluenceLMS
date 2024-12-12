@@ -390,6 +390,17 @@ def loan_disburse(request, pk):
     if loan.status != Loan.Status.APPROVED:
         messages.error(request, 'Only approved loans can be disbursed.')
         return redirect('web_loans:detail', pk=loan.pk)
+
+    # Handle search by National ID
+    if request.method == 'GET':
+        national_id = request.GET.get('national_id')
+        if national_id:
+            loan = Loan.objects.filter(customer__national_id=national_id).first()  # Adjust according to your model structure
+            if loan:
+                return render(request, 'loans/loan_disburse.html', {'loan': loan})
+            else:
+                messages.error(request, 'No loan found for this National ID.')
+                return render(request, 'loans/loan_disburse.html', {'loan': None})    
         
     if request.method == 'POST':
         loan.status = Loan.Status.DISBURSED
