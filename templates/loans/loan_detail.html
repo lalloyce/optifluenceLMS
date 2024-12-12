@@ -6,7 +6,7 @@
 {% block content %}
 <div class="container-fluid">
     <!-- Header -->
-    <div class="row mb-4">
+    <div class="row mb-4 mt-4 px-4">
         <div class="col">
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Loan Details</h2>
@@ -21,7 +21,7 @@
 
     <!-- Loan Information -->
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-8 px-4">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Loan Information</h5>
@@ -44,7 +44,7 @@
                                 <dd class="col-sm-7">{{ loan.loan_product.name }}</dd>
 
                                 <dt class="col-sm-5">Amount</dt>
-                                <dd class="col-sm-7">${{ loan.amount|floatformat:2 }}</dd>
+                                <dd class="col-sm-7">KES {{ loan.amount|floatformat:2 }}</dd>
 
                                 <dt class="col-sm-5">Term</dt>
                                 <dd class="col-sm-7">{{ loan.term_months }} months</dd>
@@ -118,9 +118,9 @@
                                 <tr>
                                     <td>{{ installment.installment_number }}</td>
                                     <td>{{ installment.due_date|date:"M d, Y" }}</td>
-                                    <td>${{ installment.principal_amount|floatformat:2 }}</td>
-                                    <td>${{ installment.interest_amount|floatformat:2 }}</td>
-                                    <td>${{ installment.total_amount|floatformat:2 }}</td>
+                                    <td>KES {{ installment.principal_amount|floatformat:2 }}</td>
+                                    <td>KES {{ installment.interest_amount|floatformat:2 }}</td>
+                                    <td>KES {{ installment.total_amount|floatformat:2 }}</td>
                                     <td>
                                         <span class="badge bg-{{ installment.get_status_color }}">
                                             {{ installment.get_status_display }}
@@ -179,22 +179,22 @@
                 <div class="card-body">
                     <dl class="row">
                         <dt class="col-sm-7">Principal Amount</dt>
-                        <dd class="col-sm-5 text-end">${{ loan.amount|floatformat:2 }}</dd>
+                        <dd class="col-sm-5 text-end">KES {{ loan.amount|floatformat:2 }}</dd>
 
                         <dt class="col-sm-7">Interest Rate</dt>
                         <dd class="col-sm-5 text-end">{{ loan.interest_rate|floatformat:2 }}%</dd>
 
                         <dt class="col-sm-7">Total Interest</dt>
-                        <dd class="col-sm-5 text-end">${{ loan.total_interest|floatformat:2 }}</dd>
+                        <dd class="col-sm-5 text-end">KES {{ loan.total_interest|floatformat:2 }}</dd>
 
                         <dt class="col-sm-7">Processing Fee</dt>
-                        <dd class="col-sm-5 text-end">${{ loan.processing_fee|floatformat:2 }}</dd>
+                        <dd class="col-sm-5 text-end">KES {{ loan.processing_fee|floatformat:2 }}</dd>
 
                         <dt class="col-sm-7">Monthly Payment</dt>
-                        <dd class="col-sm-5 text-end">${{ loan.monthly_payment|floatformat:2 }}</dd>
+                        <dd class="col-sm-5 text-end">KES {{ loan.monthly_payment|floatformat:2 }}</dd>
 
                         <dt class="col-sm-7 fw-bold">Total Repayment</dt>
-                        <dd class="col-sm-5 text-end fw-bold">${{ loan.total_repayment|floatformat:2 }}</dd>
+                        <dd class="col-sm-5 text-end fw-bold">KES {{ loan.total_repayment|floatformat:2 }}</dd>
                     </dl>
                 </div>
             </div>
