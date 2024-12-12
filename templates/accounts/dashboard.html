@@ -66,7 +66,7 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Portfolio</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 {% if loan_stats.total_portfolio %}
-                                    ${{ loan_stats.total_portfolio|floatformat:2|intcomma }}
+                                    KES {{ loan_stats.total_portfolio|floatformat:2|intcomma }}
                                 {% else %}
                                     --
                                 {% endif %}
