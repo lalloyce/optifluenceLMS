@@ -24,14 +24,22 @@ class CustomerBasicForm(forms.ModelForm):
         }
 
     def clean_phone_number(self):
-        """Validate phone number format."""
+        """Validate phone number."""
         phone = self.cleaned_data.get('phone_number')
         if phone:
             # Remove any spaces or special characters
             phone = ''.join(filter(str.isdigit, phone))
-            # Ensure it starts with country code or add it
-            if not phone.startswith('+'):
-                phone = '+' + phone
+            
+            # Confirm that it is digits (9-10)
+            if not (9 <= len(phone) <= 10):
+                raise ValueError("Phone number must contain between 9 and 10 digits.")
+            
+            # Remove a leading 0 if one exists
+            if phone.startswith('0'):
+                phone = phone[1:]
+            
+            # Append country code 254 to make a 12 digit phone number
+            phone = '254' + phone
         return phone
 
     def clean_email(self):
@@ -50,16 +58,12 @@ class CustomerAddressForm(forms.ModelForm):
     class Meta:
         model = Customer
         fields = [
-            'address',
             'city',
-            'postal_code',
-            'country'
+            'county'
         ]
         widgets = {
-            'address': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'city': forms.TextInput(attrs={'class': 'form-control'}),
-            'postal_code': forms.TextInput(attrs={'class': 'form-control'}),
-            'country': forms.TextInput(attrs={'class': 'form-control'}),
+            'county': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
 class CustomerIdentityForm(forms.ModelForm):

@@ -150,8 +150,7 @@ class CustomerService:
     def _calculate_profile_completion(customer: Customer) -> float:
         """Calculate the completion percentage of a customer's profile."""
         required_fields = ['first_name', 'last_name', 'phone_number', 'email']
-        optional_fields = ['date_of_birth', 'address', 'city', 'state', 
-                         'postal_code', 'country', 'id_type', 'id_number']
+        optional_fields = ['date_of_birth', 'city', 'county', 'id_type', 'id_number']
         
         # Count filled required fields
         filled_required = sum(1 for field in required_fields 

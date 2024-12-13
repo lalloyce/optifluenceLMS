@@ -8,10 +8,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied, ValidationError
 from decimal import Decimal, InvalidOperation
-
-from .models import Loan, LoanProduct, LoanApplication, LoanGuarantor
+from .models import Loan, LoanProduct, LoanApplication, LoanGuarantor, RepaymentSchedule
 from .forms import LoanForm, LoanApprovalForm, LoanApplicationForm
 from apps.customers.models import Customer
+from .services.loan_services import apply_payment, record_payment as record_payment_service
 import json
 from datetime import timedelta, datetime
 
@@ -43,11 +43,10 @@ def loan_dashboard(request):
 
 @login_required
 def dashboard(request):
-    # Get time period from request
+    """Detailed dashboard view with more metrics."""
     period = request.GET.get('period', '30')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-
     today = timezone.now().date()
     
     if start_date and end_date and period == 'custom':
@@ -58,49 +57,33 @@ def dashboard(request):
         start_date = today - timedelta(days=days)
         end_date = today
 
-    # KPI Metrics
     active_loans = Loan.objects.filter(status=Loan.Status.DISBURSED)
     active_loans_count = active_loans.count()
-    total_portfolio_value = active_loans.aggregate(
-        total=Sum('amount'))['total'] or Decimal('0.00')
-
-    # Due this week
+    total_portfolio_value = active_loans.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
     week_ahead = today + timedelta(days=7)
     due_this_week = RepaymentSchedule.objects.filter(
         due_date__range=[today, week_ahead],
         status='PENDING'
     ).aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
-
-    # Overdue amount
     overdue_amount = RepaymentSchedule.objects.filter(
         due_date__lt=today,
         status='PENDING'
     ).aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
-
-    # Recent Loans
     recent_loans = Loan.objects.select_related('customer').filter(
         application_date__range=[start_date, end_date]
     ).order_by('-application_date')[:10]
-
-    # Top Borrowers - Calculate based on total loans taken
     top_borrowers = Customer.objects.annotate(
         loan_count_all_time=Count('loans'),
         total_all_time=Sum('loans__amount')
     ).filter(
         loan_count_all_time__gt=0
     ).order_by('-total_all_time')[:10]
-
-    # Loan Type Distribution
     loan_types = active_loans.values('loan_product__name').annotate(
         count=Count('id')
     ).order_by('-count')
-    
     loan_types_labels = json.dumps([lt['loan_product__name'] for lt in loan_types])
     loan_types_data = json.dumps([lt['count'] for lt in loan_types])
-
-    # Portfolio Composition
-    total_principal = active_loans.aggregate(
-        total=Sum('amount'))['total'] or Decimal('0.00')
+    total_principal = active_loans.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
     total_interest = RepaymentSchedule.objects.filter(
         loan__status=Loan.Status.DISBURSED
     ).aggregate(
@@ -111,8 +94,6 @@ def dashboard(request):
         status='PENDING'
     ).aggregate(
         total=Sum('penalty_amount'))['total'] or Decimal('0.00')
-
-    # Monthly Disbursement Trend
     monthly_disbursements = Loan.objects.filter(
         disbursement_date__range=[start_date, end_date],
         status=Loan.Status.DISBURSED
@@ -121,13 +102,8 @@ def dashboard(request):
     ).values('month').annotate(
         total=Sum('amount')
     ).order_by('month')
-
-    monthly_labels = json.dumps([
-        d['month'].strftime('%B %Y') for d in monthly_disbursements
-    ])
-    monthly_amounts = json.dumps([
-        float(d['total']) for d in monthly_disbursements
-    ])
+    monthly_labels = json.dumps([d['month'].strftime('%B %Y') for d in monthly_disbursements])
+    monthly_amounts = json.dumps([float(d['total']) for d in monthly_disbursements])
 
     context = {
         'days': int(period),
@@ -150,7 +126,6 @@ def dashboard(request):
 
     return render(request, 'loans/dashboard.html', context)
 
-# views.py
 @login_required
 def customer_details_api(request, pk):
     """API endpoint for fetching customer details."""
@@ -180,7 +155,6 @@ def customer_details_api(request, pk):
     except Customer.DoesNotExist:
         return JsonResponse({'error': 'Customer not found'}, status=404)
 
-
 @login_required
 def loan_application(request):
     """Handle new loan applications."""
@@ -202,7 +176,6 @@ def loan_application(request):
     else:
         form = LoanApplicationForm()
         
-        # If customer is selected, pre-fill other loans information
         customer_id = request.GET.get('customer')
         if customer_id:
             try:
@@ -224,12 +197,137 @@ def loan_application(request):
             except Customer.DoesNotExist:
                 pass
     
-    context = {
+        context = {
         'form': form,
         'loan_products': LoanProduct.objects.filter(is_active=True),
         'customers': Customer.objects.filter(is_active=True)
     }
     return render(request, 'loans/loan_application.html', context)
+
+@login_required
+def guarantor_list_api(request):
+    """API endpoint for fetching eligible guarantors."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    customer_id = request.GET.get('exclude')
+    if not customer_id:
+        return JsonResponse({'error': 'Customer ID required'}, status=400)
+    
+    try:
+        guarantors = Customer.objects.filter(
+            is_active=True
+        ).exclude(
+            id=customer_id
+        ).values('id', 'first_name', 'last_name', 'id_number')
+        
+        return JsonResponse({
+            'guarantors': [{
+                'id': g['id'],
+                'name': f"{g['first_name']} {g['last_name']} - {g['id_number']}"
+            } for g in guarantors]
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def loan_list(request):
+    """List all loans with filtering options."""
+    loans = Loan.objects.select_related('customer', 'loan_product', 'loan_officer')
+    
+    status = request.GET.get('status')
+    if status:
+        loans = loans.filter(status=status)
+    
+    search = request.GET.get('search')
+    if search:
+        loans = loans.filter(
+            Q(customer__first_name__icontains=search) |
+            Q(customer__last_name__icontains=search) |
+            Q(application_number__icontains=search)
+        )
+    
+    paginator = Paginator(loans, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'status_choices': Loan.Status.choices,
+    }
+    return render(request, 'loans/loan_list.html', context)
+
+@login_required
+def loan_detail(request, pk):
+    """Display detailed information about a loan."""
+    loan = get_object_or_404(Loan, pk=pk)
+    
+    context = {
+        'loan': loan,
+        'repayment_schedule': loan.repayment_schedule.all().order_by('installment_number')
+    }
+    return render(request, 'loans/loan_detail.html', context)
+
+@login_required
+def application_detail(request, pk):
+    """Display detailed information about a loan application."""
+    application = get_object_or_404(LoanApplication, pk=pk)
+    
+    if request.method == 'POST' and request.user.has_perm('loans.can_approve_loans'):
+        action = request.POST.get('action')
+        try:
+            if action == 'approve':
+                application.approve()
+                loan = Loan.create_from_application(application, request.user)
+                messages.success(request, 'Loan application approved and loan created successfully.')
+                return redirect('web_loans:loan_detail', pk=loan.pk)
+            elif action == 'reject':
+                reason = request.POST.get('rejection_reason')
+                application.reject(reason)
+                messages.success(request, 'Loan application rejected.')
+            elif action == 'review':
+                application.start_review(request.user)
+                messages.success(request, 'Application review started.')
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    remaining_balance = None
+    if application.status == 'APPROVED' and hasattr(application, 'loan'):
+        total_paid = sum(i.paid_amount for i in application.loan.repayment_schedule.all())
+        remaining_balance = application.loan.amount - total_paid
+    
+    context = {
+        'application': application,
+        'remaining_balance': remaining_balance,
+        'today': timezone.now(),
+    }
+    return render(request, 'loans/application_detail.html', context)
+
+@login_required
+def loan_approve(request, pk):
+    """Handle loan approval process."""
+    loan = get_object_or_404(Loan, pk=pk)
+    
+    if not request.user.has_perm('loans.can_approve_loans'):
+        raise PermissionDenied
+        
+    if request.method == 'POST':
+        form = LoanApprovalForm(request.POST, instance=loan)
+        if form.is_valid():
+            loan = form.save(commit=False)
+            loan.status = Loan.Status.APPROVED
+            loan.approval_date = timezone.now()
+            loan.save()
+            messages.success(request, 'Loan approved successfully.')
+            return redirect('web_loans:loan_detail', pk=loan.pk)
+    else:
+        form = LoanApprovalForm(instance=loan)
+    
+    context = {
+        'form': form,
+        'loan': loan,
+    }
+    return render(request, 'loans/loan_approve.html', context)
 
 @login_required
 def guarantor_list_api(request):
@@ -326,7 +424,7 @@ def application_detail(request, pk):
     remaining_balance = None
     if application.status == 'APPROVED' and hasattr(application, 'loan'):
         total_paid = sum(i.paid_amount for i in application.loan.repayment_schedule.all())
-        remaining_balance = application.loan.loan_amount - total_paid
+        remaining_balance = application.loan.amount - total_paid
     
     context = {
         'application': application,
@@ -334,32 +432,6 @@ def application_detail(request, pk):
         'today': timezone.now(),
     }
     return render(request, 'loans/application_detail.html', context)
-
-@login_required
-def loan_approve(request, pk):
-    """Handle loan approval process."""
-    loan = get_object_or_404(Loan, pk=pk)
-    
-    if not request.user.has_perm('loans.can_approve_loans'):
-        raise PermissionDenied
-        
-    if request.method == 'POST':
-        form = LoanApprovalForm(request.POST, instance=loan)
-        if form.is_valid():
-            loan = form.save(commit=False)
-            loan.status = Loan.Status.APPROVED
-            loan.approval_date = timezone.now()
-            loan.save()
-            messages.success(request, 'Loan approved successfully.')
-            return redirect('web_loans:detail', pk=loan.pk)
-    else:
-        form = LoanApprovalForm(instance=loan)
-    
-    context = {
-        'form': form,
-        'loan': loan,
-    }
-    return render(request, 'loans/loan_approve.html', context)
 
 @login_required
 def loan_reject(request, pk):
@@ -375,7 +447,7 @@ def loan_reject(request, pk):
         loan.notes = (loan.notes or '') + f"\nRejection Reason: {reason}"
         loan.save()
         messages.success(request, 'Loan rejected successfully.')
-        return redirect('web_loans:detail', pk=loan.pk)
+        return redirect('web_loans:loan_detail', pk=loan.pk)
     
     return render(request, 'loans/loan_reject.html', {'loan': loan})
 
@@ -389,8 +461,19 @@ def loan_disburse(request, pk):
         
     if loan.status != Loan.Status.APPROVED:
         messages.error(request, 'Only approved loans can be disbursed.')
-        return redirect('web_loans:detail', pk=loan.pk)
-        
+        return redirect('web_loans:loan_detail', pk=loan.pk)
+
+    # Handle search by National ID
+    if request.method == 'GET':
+        national_id = request.GET.get('national_id')
+        if national_id:
+            loan = Loan.objects.filter(customer__national_id=national_id).first()  # Adjust according to your model structure
+            if loan:
+                return render(request, 'loans/loan_disburse.html', {'loan': loan})
+            else:
+                messages.error(request, 'No loan found for this National ID.')
+                return render(request, 'loans/loan_disburse.html', {'loan': None})    
+    
     if request.method == 'POST':
         loan.status = Loan.Status.DISBURSED
         loan.disbursement_date = timezone.now()
@@ -401,13 +484,14 @@ def loan_disburse(request, pk):
         loan.generate_repayment_schedule()
         
         messages.success(request, 'Loan disbursed successfully.')
-        return redirect('web_loans:detail', pk=loan.pk)
+        return redirect('web_loans:loan_detail', pk=loan.pk)
     
     return render(request, 'loans/loan_disburse.html', {'loan': loan})
 
 @login_required
 def record_payment(request, pk):
     """Record a payment for a loan installment."""
+    from .models import Payment  # Import Payment within the function
     loan = get_object_or_404(Loan, pk=pk)
     
     if request.method == 'POST':
@@ -437,7 +521,7 @@ def record_payment(request, pk):
             messages.error(request, 'Invalid payment amount')
     
     return redirect('web_loans:application_detail', pk=loan.application.pk)
-
+    
 @login_required
 def loan_calculator(request):
     """Loan calculator view."""
@@ -492,20 +576,15 @@ def loan_product_list(request):
             product_id = request.POST.get('product_id')
             try:
                 if product_id:
-                    # Update existing product
                     product = LoanProduct.objects.get(id=product_id)
                     message = f'Loan product "{product.name}" updated successfully.'
                 else:
-                    # Create new product
                     product = LoanProduct()
                     message = 'New loan product created successfully.'
                 
-                # Update product fields
                 product.name = request.POST.get('name', '').strip()
                 product.description = request.POST.get('description', '').strip()
                 product.is_active = request.POST.get('is_active') == 'on'
-
-                # Term and rates
                 product.term_months = int(request.POST.get('term_months', 1))
                 product.grace_period_months = int(request.POST.get('grace_period_months', 0))
                 product.interest_rate = Decimal(request.POST.get('interest_rate', '0'))
@@ -514,19 +593,12 @@ def loan_product_list(request):
                 product.insurance_fee = Decimal(request.POST.get('insurance_fee', '0'))
                 product.minimum_amount = Decimal(request.POST.get('minimum_amount', '0'))
                 product.maximum_amount = Decimal(request.POST.get('maximum_amount', '0'))
-
-                # Documents and criteria
                 product.required_documents = request.POST.get('required_documents', '').strip()
                 product.eligibility_criteria = request.POST.get('eligibility_criteria', '').strip()
-
-                # Term limits
                 product.minimum_term = 1
                 product.maximum_term = product.term_months
-
-                # Save the product
                 product.save()
 
-                # Update risk-based amounts
                 if product.maximum_amount > 0:
                     product.high_risk_max_amount = product.maximum_amount * Decimal('0.3')
                     product.medium_risk_max_amount = product.maximum_amount * Decimal('0.6')
@@ -541,6 +613,6 @@ def loan_product_list(request):
             except Exception as e:
                 messages.error(request, f'Error saving loan product: {str(e)}')
     
-    # Get all loan products
     loan_products = LoanProduct.objects.all().order_by('-created_at')
     return render(request, 'loans/loan_product_list.html', {'loan_products': loan_products})
+

@@ -3,9 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.conf import settings
-from apps.loans.models import Loan
 from apps.customers.models import Customer
-
+from apps.loans.models import Loan  # Import the Loan model directly
 
 class Transaction(models.Model):
     """Model for tracking all financial transactions."""
@@ -113,11 +112,8 @@ class RepaymentSchedule(models.Model):
         OVERDUE = 'OVERDUE', _('Overdue')
         DEFAULTED = 'DEFAULTED', _('Defaulted')
     
-    loan = models.ForeignKey(
-        Loan,
-        on_delete=models.CASCADE,
-        related_name='repayment_schedules'
-    )
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='transaction_repayment_schedules')  # Use the correct string reference
+
     installment_number = models.IntegerField()
     due_date = models.DateTimeField()
     principal_amount = models.DecimalField(

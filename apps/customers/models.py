@@ -25,7 +25,7 @@ class Customer(models.Model):
     first_name = models.CharField(max_length=100, default='')
     last_name = models.CharField(max_length=100, default='')
     phone_number = models.CharField(max_length=20, default='')
-    email = models.EmailField(unique=True, null=True, blank=True)
+    
     profile_picture = models.ImageField(
         upload_to='customers/profile_pictures/%Y/%m/',
         null=True,
@@ -48,13 +48,11 @@ class Customer(models.Model):
     
     # Optional Fields
     date_of_birth = models.DateField(null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
     
     # Address Information (Optional)
-    address = models.TextField(default='')
     city = models.CharField(max_length=100, default='')
-    state = models.CharField(max_length=100, default='')
-    postal_code = models.CharField(max_length=20, default='')
-    country = models.CharField(max_length=100, default='')
+    county = models.CharField(max_length=100, default='')
     
     # Identity Information (Optional)
     id_type = models.CharField(max_length=50, default='')
